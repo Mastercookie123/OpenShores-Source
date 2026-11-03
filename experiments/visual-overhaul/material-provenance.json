@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-01",
+  "tool": "built-in image_gen",
+  "accepted": {
+    "file": "../procedural-parts/pack/materials/skin-height.png",
+    "prompt": "Asset type: seamless grayscale skin microsurface HEIGHT texture for a game shader, not a photo or color albedo. Generate a perfectly tileable square texture of fine natural human skin pores, tiny irregular cellular microstructure, mostly uniform middle gray with low contrast (roughly 40%-60% gray). Even flat orthographic illumination; no directional shading, no shadow or highlight, no body part, no face, no eyes, no lips, no hairs, no scars, no macro wrinkles or folds, no border, no labels. The surface must look natural at close range with varied small pore sizes, not repetitive dots or stone pebbles. All four edges should tile seamlessly. This will be repeated at high frequency and used only for subtle shader normal and roughness variation.",
+    "use": "Microsurface height detail only; original UV palette, color, facial artwork and alpha remain unchanged. Mirrored-repeat sampling."
+  },
+  "rejected": {
+    "file": "candidates/Skin-repaint-v1.png",
+    "prompt": "Use case: precise-object-edit. Asset type: production game diffuse UV texture atlas. Edit the supplied Skin.png atlas into polished modern grounded science-fiction game character artwork. CRITICAL: preserve the EXACT square canvas, four-by-four tile grid, all UV island silhouettes, coordinates, scale, orientation, padding, and every separate eye/nose/mouth/ear/claw/crest patch. Do not rearrange or invent islands. Preserve the distinct sixteen palette colors, including human light and dark skin and alien red/blue/green/yellow variants. Change only the painted surface quality inside existing regions: natural low-contrast skin pores instead of coarse yellow mottling, anatomically clear subtle lip/nostril detail, natural iris and sclera detail, more convincing horn/keratin and short hair fibers in their existing islands. Diffuse/albedo only: neutral illumination, no baked directional light or specular highlights. Keep the overall palette averages close to the original so procedural coloring still works. No labels, no text, no logos, no borders, no characters or 3D mockup, no change to UV layout. Output only the flat production texture map.",
+    "reason": "Mapped model comparison showed shifted facial/UV details; not shipped."
+  }
+}

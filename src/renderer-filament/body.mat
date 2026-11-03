@@ -1,0 +1,34 @@
+material {
+    name : "OpenShores live procedural body",
+    shadingModel : lit,
+    doubleSided : true,
+    flipUV : false,
+    blending : masked,
+    maskThreshold : 0.15,
+    requires : [ uv0, color ],
+    parameters : [
+        { type : sampler2d, name : skin },
+        { type : sampler2d, name : clothes },
+        { type : float4, name : skinOffset },
+        { type : float3, name : clothesOffsetWear },
+        { type : float, name : roughness },
+        { type : float, name : metallic }
+    ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float2 uv=getUV0();
+        float4 top=texture(materialParams_skin,uv+materialParams.skinOffset.xy);
+        float4 bottom=texture(materialParams_skin,uv+materialParams.skinOffset.zw);
+        float4 skin=mix(bottom,top,getColor().r);
+        float4 clothes=texture(materialParams_clothes,uv+materialParams.clothesOffsetWear.xy);
+        float wear=materialParams.clothesOffsetWear.z;
+        float amount=wear<=1.0 ? wear : clothes.a;
+        float4 color=mix(skin,clothes,amount);
+        // Legacy bitmap textures contain sRGB colors, uploaded as SRGB8_A8.
+        material.baseColor=color;
+        material.roughness=mix(materialParams.roughness,0.85,amount);
+        material.metallic=materialParams.metallic;
+    }
+}

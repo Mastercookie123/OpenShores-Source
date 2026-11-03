@@ -1638,7 +1638,9 @@ void DaSolarSystem::RenderEnvironment(const AuMatrix4x4& projection, const AuMat
 
 	AuModelMatrixHash rmod;
 	DaAtomList sunShadowCasters;
-	bool sunShadowMap = AuGLSLShader::ShadowMaps();
+	// Filament owns the complete scene and its shadow maps. Rendering the same
+	// casters into legacy GL sun and six-face lamp maps duplicates this work.
+	bool sunShadowMap = AuGLSLShader::ShadowMaps() && qgetenv("OPENSHORES_RENDERER")!="filament-world";
 	if(sunShadowMap)
 		rmod.SetSunShadowCasters(&sunShadowCasters);
 	CollectModelMatrices(tmodel, rmod);

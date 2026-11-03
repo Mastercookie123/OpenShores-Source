@@ -274,8 +274,8 @@ void AuGlobal::Init(MODE mode, const QString& appName, const QString& company, D
 	if(m_ResourceIconSize < 1 || m_ResourceIconSize > 200)
 		m_ResourceIconSize = 100;
 
-	m_PerPixelLighting = m_Settings.readBoolEntry(PerPixelLightingKey(), false);
-	m_Shadows = m_Settings.readBoolEntry(ShadowsKey(), false);
+	m_PerPixelLighting = m_Settings.readBoolEntry(PerPixelLightingKey(), true);
+	m_Shadows = m_Settings.readBoolEntry(ShadowsKey(), true);
 	m_ShadowsDebug = m_Settings.readBoolEntry(ShadowsDebugKey(), false);
 	m_ShadowMaps = m_Settings.readBoolEntry(ShadowMapsKey(), true);
 	m_ShadowMapSize = qBound(512, m_Settings.readNumEntry(ShadowMapSizeKey(), 2048), 8192);

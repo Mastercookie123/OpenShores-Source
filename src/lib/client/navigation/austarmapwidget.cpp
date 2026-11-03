@@ -2434,6 +2434,7 @@ void AuStarMapGL::paintGL()
 
 	AuMatrix4x4 p, mv, mvp;
 	GetMVP(p, mv, mvp);
+    AuFilamentWorldScope filamentMap(*m_RenderInfo->re,p);
 
 	// Render background axes and galaxy density blobs.
 	{

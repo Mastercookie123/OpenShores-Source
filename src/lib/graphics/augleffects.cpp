@@ -10,6 +10,7 @@
 #include "autime.h"
 #include <QDataStream>
 #include <QMessageBox>
+#include <QOpenGLContext>
 #include <QOpenGLFunctions_1_0>
 #include <QOpenGLFunctions_1_1>
 #include <QOpenGLFunctions_1_2>
@@ -3904,6 +3905,8 @@ void AuGLTexture::Delete(AuOpenGLFunctions& GLf)
 	}
 }
 
+int AuGLTexture::s_Anisotropy = 8;
+
 void AuGLTexture::NameAndBind(AuOpenGLFunctions& GLf, bool mipMap, GLint magFilter, GLint minFilter)
 {
 	// Delete this texture if it was already created.
@@ -3942,6 +3945,22 @@ void AuGLTexture::NameAndBind(AuOpenGLFunctions& GLf, bool mipMap, GLint magFilt
 			OutputGlError(QString("File: %1 Line: %2 glTexParameteri").arg(__FILE__).arg(__LINE__));
 			GLf.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			OutputGlError(QString("File: %1 Line: %2 glTexParameteri").arg(__FILE__).arg(__LINE__));
+
+			// Keep roads, floors and terrain sharp when viewed at grazing angles.
+			// Check each current context rather than caching a capability globally:
+			// the designer and scene may use different contexts or GPUs.
+			QOpenGLContext* context = QOpenGLContext::currentContext();
+			if(s_Anisotropy > 1 && context &&
+				(context->hasExtension(QByteArrayLiteral("GL_EXT_texture_filter_anisotropic")) ||
+				 context->hasExtension(QByteArrayLiteral("GL_ARB_texture_filter_anisotropic"))))
+			{
+				const GLenum maxAnisotropy = 0x84FF;
+				const GLenum textureAnisotropy = 0x84FE;
+				GLfloat supported = 1.f;
+				GLf.glGetFloatv(maxAnisotropy, &supported);
+				GLf.glTexParameterf(GL_TEXTURE_2D, textureAnisotropy,
+					qBound(1.f, static_cast<GLfloat>(s_Anisotropy), qMax(1.f, supported)));
+			}
 		}
 		else
 		{

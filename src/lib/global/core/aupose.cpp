@@ -207,6 +207,15 @@ float AuPose::Rhythm(float bodyHz, float cycleOffset, const AuElapsedTimer& when
 	}
 
 	float time = when.MinCycle() * 60.f;		// 0..60 seconds
+    // The instrumented render lab supplies a fixed clock for repeatable attack
+    // and gait samples. Ordinary clients have neither variable set.
+    static const QByteArray previewTime = qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT")
+        ? qgetenv("OPENSHORES_PREVIEW_SECONDS") : QByteArray();
+    if(!previewTime.isEmpty())
+    {
+        bool ok=false;float seconds=previewTime.toFloat(&ok);
+        if(ok && seconds>=0 && seconds<60)time=seconds;
+    }
 	float cycles = time * bodyHz * speed;				// number of cycles
 	float rhythm = sinf(cycles * PIf*2 + cycleOffset);
 	return rhythm;

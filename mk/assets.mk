@@ -7,7 +7,7 @@ SHADER_SOURCES := $(wildcard src/lib/graphics/resources/shaders/*.glsl)
 
 # Client builds need runtime audio with either toolchain. Shader and story
 # archives are checked in and rebuilt explicitly when their sources change.
-linux linux-client linux-clients win win-client: audio-assets
+linux linux-client linux-clients win win-client: audio-assets shader-assets
 
 assets: audio-assets shader-assets story-assets
 

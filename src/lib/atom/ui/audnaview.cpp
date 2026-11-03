@@ -183,6 +183,7 @@ void AuDNAView::paintGL()
 		projection.Perspective(45.0*DEG2RAD, 1, 2, 10000);
 
 	SetupLights(m_Model);
+    AuFilamentWorldScope filamentPreview(*m_RenderInfo->re,projection);
 
 	float cgHeightFemale;
 	if(m_Female)

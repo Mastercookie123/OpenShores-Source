@@ -64,6 +64,7 @@ private:
 	QLabel*								m_TreeViewRange;
 	QLabel*								m_WorldMapQuality;
 	QCheckBox*							m_PerPixelCheck;
+	QComboBox*                           m_TextureAnisotropy;
 	QCheckBox*							m_ShadowsCheck;
 	QCheckBox*							m_ShadowMapsCheck;
 	QList<QWidget*>						m_GlossWidgets;
@@ -87,6 +88,8 @@ public:
 	void SetOpenGLInfo(int textureUnits, int uniformLocs);
 
 protected slots:
+	void EnhancedGraphicsDefault();
+	void SetTextureAnisotropy(int index);
 	void FieldOfViewChanged(int value);
 	void FramedPictureSizeChanged(int value);
 	void GroundTextureSizeChanged(int value);

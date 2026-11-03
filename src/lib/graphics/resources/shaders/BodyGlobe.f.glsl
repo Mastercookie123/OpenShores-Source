@@ -8,6 +8,9 @@
 #define PER_PIXEL_CLOTH_GLOSS 0.1
 #endif
 
+float bodySkin = 0.;
+vec3 bodySpecular = vec3(0.);
+
 struct PointLight
 {
 	bool								enabled;
@@ -238,6 +241,9 @@ void computeSunLight(SunLight sun,
 	vec3 H = normalize(L + V);
 
 	float lighting = max(0.0, NdotL);
+#ifdef CHARACTER_SURFACE_ENABLED
+    lighting = mix(lighting, max(0., (NdotL + .12 * max(0., LdotU))/1.12), bodySkin);
+#endif
 	float specular = (NdotL > 0. && shininess >= 1) ? pow(max(0., dot(N,H)), shininess) : 0.;
 	oDiffuse = sun.color * lighting * attenuation;
 	oSpecular = sun.color * specular * attenuation;
@@ -277,8 +283,17 @@ void computePointLight(PointLight light,
 	vec3 H = normalize(L + V);
 
 	float lighting = max(0.0, NdotL);
+#ifdef CHARACTER_SURFACE_ENABLED
+    lighting = mix(lighting, max(0., (NdotL + .12)/1.12), bodySkin);
+#endif
 	float specular = (NdotL > 0. && shininess >= 1) ? pow(max(0., dot(N,H)), shininess) : 0.;
-	oDiffuse = light.color * lighting * attenuation;
+	#ifdef CHARACTER_SURFACE_ENABLED
+    // Small local indirect-light approximation: reflected lamp/fire light
+    // reveals back-facing skin. It vanishes with the local light source.
+    oDiffuse = light.color * (lighting + .07 * bodySkin) * attenuation;
+#else
+    oDiffuse = light.color * lighting * attenuation;
+#endif
 	oSpecular = light.color * specular * attenuation;
 }
 
@@ -344,7 +359,14 @@ vec3 computeLighting(LightSources light,
 
 	vec3 ambient = mix(light.ambient * .15, light.ambient, (dot(N, light.ambientUp) + 1.)/2.);
 
-	vec3 color = ambient + diffuseSum + specularSum * bodyGloss;
+	#ifdef CHARACTER_SURFACE_ENABLED
+    // Skin has a weak, untinted dielectric highlight instead of multiplying
+    // the entire specular term by the skin pigment. Cloth keeps its old path.
+    bodySpecular = specularSum * bodyGloss * bodySkin;
+    vec3 color = ambient + diffuseSum + specularSum * bodyGloss * (1. - bodySkin);
+#else
+    vec3 color = ambient + diffuseSum + specularSum * bodyGloss;
+#endif
 
 	return clamp(color, vec3(0,0,0), vec3(1,1,1));
 }
@@ -370,6 +392,8 @@ in vec3									vertTexCoordTopface;
 
 out vec4								fragColor;
 
+#CharacterSurface
+
 void main()
 {
 	vec4 tClothes =
@@ -377,15 +401,36 @@ void main()
 	vec4 topColor = texture(texSkin, vec2(vertTexCoordTopface.x+texSkinOffset.x, vertTexCoordTopface.y+texSkinOffset.y));
 	vec4 bottomColor = texture(texSkin, vec2(vertTexCoordTopface.x+texSkinOffset.z, vertTexCoordTopface.y+texSkinOffset.w));
 	vec4 tSkin = mix(bottomColor, topColor, vertTexCoordTopface.z);
+#ifdef CHARACTER_SURFACE_ENABLED
+    tSkin.rgb=characterSurfaceAlbedo(tSkin.rgb,texSkin,texSkinOffset,vertTexCoordTopface.z);
+#endif
 
 	float clothes = texClothesOffsetWear.z <= 1 ? texClothesOffsetWear.z : tClothes.a;
 	fragColor = mix(tSkin, tClothes, clothes);
+#ifdef CHARACTER_SURFACE_ENABLED
+    fragColor.rgb = mix(characterSkinDetail(fragColor.rgb, vertTexCoordTopface.xy), fragColor.rgb, clothes);
+#endif
 	if(fragColor.a < .15)
 		discard;
 #ifdef PER_PIXEL_LIGHTING
 	bodyGloss = mix(PER_PIXEL_SKIN_GLOSS, PER_PIXEL_CLOTH_GLOSS, clothes);
-	vec4 vertColor = vec4(computeLighting(light, vertLitShininess, vertLitP, normalize(vertLitN)), 1) * vertLitScale;
+#ifdef CHARACTER_SURFACE_ENABLED
+    bodyGloss=characterMaterialGloss(bodyGloss,clothes);
+#endif
+    bodySkin = 1. - clothes;
+	vec3 surfaceNormal=normalize(vertLitN);
+#ifdef CHARACTER_SURFACE_ENABLED
+    surfaceNormal=characterBodyNormal(surfaceNormal,vertLitP,vertTexCoordTopface.xy,clothes);
+#endif
+    float materialShininess=vertLitShininess;
+#ifdef CHARACTER_SURFACE_ENABLED
+    materialShininess=mix(vertLitShininess,min(vertLitShininess,64.),1.-clothes);
+#endif
+    vec4 vertColor = vec4(computeLighting(light, materialShininess, vertLitP, surfaceNormal), 1) * vertLitScale;
 	vertColor.rgb = min(vertColor.rgb + glowAlpha.rgb, vec3(1.5, 1.5, 1.5));
 #endif
 	fragColor *= vertColor;
+#if defined(PER_PIXEL_LIGHTING) && defined(CHARACTER_SURFACE_ENABLED)
+    fragColor.rgb += bodySpecular * .04;
+#endif
 }

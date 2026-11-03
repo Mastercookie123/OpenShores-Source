@@ -964,6 +964,9 @@ public:
 	void CreateDeviceObjects(AuGLEffects& re, AuGLModelCache& mc, COMMODITYID clothing, COMMODITYID helmet, float speedEnc);
 
 	void CreateSkin(AuGLEffects& re, AuGLModelCache& mc);		// Creates 3ds models of skin chunks.
+    bool UsesHumanPrototype() const;
+    GLuint HumanPrototypeTexture(AuGLEffects& re) const;
+    AuMatrix4x4 RenderBone(int index) const;
 
 	AuPose CurrentBonePose(DhDNA::BONES bone) const;
 
@@ -1275,6 +1278,9 @@ public:
 	bool RenderSunShadowDepth(const AuMatrix4x4& model, AuGLEffects& re);
 
 	// Render body centered on the body waist/pivot point.
+    bool RenderFilament(const AuMatrix4x4& projection,const AuMatrix4x4& model,AuGLEffects& re,
+        bool headless,bool headOnly,int skin,int clothes,int armor,int helmet,
+        bool fog=false,const AuPoint* globe=nullptr,const float* shadowAngles=nullptr);
 	void RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuGLEffects& re, const AuPoint& ambientLightUp,
 			bool headless);
 

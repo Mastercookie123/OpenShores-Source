@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "cases": [
+    {"id":"campfire-backlit","sex":1,"skin":2,"pose":"stand","lighting":"campfire-backlit","minimumChestLift":4},
+    {"id":"unlit-night","sex":1,"skin":2,"pose":"stand","lighting":"unlit-night"},
+    {"id":"unlit-black","sex":1,"skin":2,"pose":"stand","lighting":"unlit-black","expectUnlit":true},
+    {"id":"human-studio","sex":1,"skin":2,"pose":"stand","lighting":"studio"},
+    {"id":"human-sun","sex":1,"skin":2,"pose":"stand","lighting":"studio","shadows":true},
+    {"id":"human-orange-sun","sex":1,"skin":2,"pose":"stand","lighting":"orange","shadows":true},
+    {"id":"human-night","sex":1,"skin":2,"pose":"stand","lighting":"night"},
+    {"id":"human-side","sex":1,"skin":2,"pose":"stand","yaw":90,"shadows":true},
+    {"id":"human-back","sex":1,"skin":2,"pose":"stand","yaw":180,"shadows":true},
+    {"id":"female-clothed","sex":0,"skin":2,"pose":"stand","clothes":true,"shadows":true},
+    {"id":"human-walk","sex":1,"skin":2,"pose":"walk","clothes":true,"shadows":true},
+    {"id":"human-strike","sex":1,"skin":2,"pose":"strike","shadows":true},
+    {"id":"human-crouch","sex":1,"skin":2,"pose":"crouch","shadows":true},
+    {"id":"long-limbs","sex":1,"skin":2,"pose":"stand","anatomy":"long","shadows":true},
+    {"id":"multi-limb","sex":1,"skin":2,"pose":"stand","anatomy":"multi","shadows":true},
+    {"id":"quadruped","sex":0,"skin":1,"pose":"stand","anatomy":"quadruped","shadows":true}
+  ]
+}

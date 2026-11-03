@@ -67,6 +67,12 @@ AuSetRender::AuSetRender(bool glContextOk, QWidget *parent) : QWidget(parent)
 				"</html>"));
 	connect(maxGraphicsDefault, SIGNAL(clicked()), SLOT(MaxGraphicsDefault()));
 
+	QPushButton* enhancedGraphics = new QPushButton(tr("Enhanced"));
+	enhancedGraphics->setToolTip(tr("Enables per-pixel lighting, sunlight and object shadows, "
+		"and higher-detail textures without maximum draw distances. "
+		"Texture filtering changes apply after restarting the client."));
+	connect(enhancedGraphics, SIGNAL(clicked()), SLOT(EnhancedGraphicsDefault()));
+
 	cbdrawme = new QComboBox(this);
 	cbdrawme->addItem(tr("Draw Full Body"), 1);
 	cbdrawme->addItem(tr("Draw Headless Body"), 2);
@@ -901,6 +907,7 @@ AuSetRender::AuSetRender(bool glContextOk, QWidget *parent) : QWidget(parent)
 		QHBoxLayout* deflay = new QHBoxLayout;
 		deflay->addWidget(lowMemoryDefault);
 		deflay->addWidget(resetDefault);
+		deflay->addWidget(enhancedGraphics);
 		deflay->addWidget(maxGraphicsDefault);
 
 		sliderlay->addLayout(deflay, row,1, 1,2);
@@ -926,6 +933,16 @@ AuSetRender::AuSetRender(bool glContextOk, QWidget *parent) : QWidget(parent)
 	infolay->addWidget(m_SkyBoxMipmap);
 	infolay->addWidget(ckbumpmapseas);
 	infolay->addWidget(newFlora);
+	m_TextureAnisotropy = new QComboBox(this);
+	for(int samples : {1, 2, 4, 8, 16})
+		m_TextureAnisotropy->addItem(samples == 1 ? tr("Texture Filtering: Standard") :
+			tr("Texture Filtering: %1x Anisotropic").arg(samples), samples);
+	int filteringIndex = m_TextureAnisotropy->findData(AuGLTexture::Anisotropy());
+	m_TextureAnisotropy->setCurrentIndex(filteringIndex < 0 ? 3 : filteringIndex);
+	m_TextureAnisotropy->setToolTip(tr("Keeps textured surfaces sharper at an angle. "
+		"Limited to what your graphics card supports. Restart the client after changing this setting."));
+	connect(m_TextureAnisotropy, SIGNAL(currentIndexChanged(int)), SLOT(SetTextureAnisotropy(int)));
+	infolay->addWidget(m_TextureAnisotropy);
 	infolay->addWidget(perPixelLighting);
 	infolay->addWidget(shadows);
 	infolay->addWidget(m_ShadowMapsCheck);
@@ -1262,6 +1279,10 @@ void AuSetRender::SetTreeViewRange(int value)
 
 void AuSetRender::ResetDefault()
 {
+	m_PerPixelCheck->setChecked(true);
+	m_ShadowsCheck->setChecked(true);
+	m_ShadowMapsCheck->setChecked(true);
+	m_TextureAnisotropy->setCurrentIndex(m_TextureAnisotropy->findData(8));
 	//ckdrawgun->setChecked(true);
 	//ckdrawminime->setChecked(true);
 	//ckdrawframedpics->setChecked(true);
@@ -1289,6 +1310,10 @@ void AuSetRender::ResetDefault()
 
 void AuSetRender::LowMemoryDefault()
 {
+	m_ShadowMapsCheck->setChecked(false);
+	m_ShadowsCheck->setChecked(false);
+	m_PerPixelCheck->setChecked(false);
+	m_TextureAnisotropy->setCurrentIndex(m_TextureAnisotropy->findData(1));
 	maxLightsSlider->setValue(4);
 	cloudsSlider->setValue(0);
 	framedPictureSizeSlider->setValue(64);
@@ -1308,6 +1333,10 @@ void AuSetRender::LowMemoryDefault()
 
 void AuSetRender::MaxGraphicsDefault()
 {
+	m_PerPixelCheck->setChecked(true);
+	m_ShadowsCheck->setChecked(true);
+	m_ShadowMapsCheck->setChecked(true);
+	m_TextureAnisotropy->setCurrentIndex(m_TextureAnisotropy->findData(16));
 	maxLightsSlider->setValue(MAX_POINT_LIGHTS);
 	cloudsSlider->setValue(3);
 	framedPictureSizeSlider->setValue(2048);
@@ -1323,6 +1352,23 @@ void AuSetRender::MaxGraphicsDefault()
 	buildingViewRangeSlider->setValue(20000);
 	m_SkyBoxSizeSlider->setValue(1024);
 	m_SkyBoxMipmap->setChecked(true);
+}
+
+void AuSetRender::EnhancedGraphicsDefault()
+{
+	ResetDefault();
+	groundTextureSizeSlider->setValue(256);
+	plantTextureSizeSlider->setValue(512);
+	m_SkyBoxSizeSlider->setValue(2048);
+}
+
+void AuSetRender::SetTextureAnisotropy(int index)
+{
+	if(index < 0)
+		return;
+	int samples = m_TextureAnisotropy->itemData(index).toInt();
+	AuGLTexture::SetAnisotropy(samples);
+	g_Au.Settings().writeEntry(AuGlobal::TextureAnisotropyKey(), samples);
 }
 
 void AuSetRender::SetOpenGLInfo(int textureUnits, int uniformLocs)

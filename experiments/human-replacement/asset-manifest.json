@@ -1,0 +1,89 @@
+{
+  "source": "https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip",
+  "files": [
+    {
+      "path": "skins/young_caucasian_male/young_lightskinned_male_diffuse.png",
+      "sha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963"
+    },
+    {
+      "path": "eyes/materials/brown_eye.png",
+      "sha256": "4659691c7295ad6206c78b003e5fd0e5f91dcd53032fa914a229bb48cabe424b"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01.obj",
+      "sha256": "d8ef4bf71aa6bd386958921c17e0eed263ef63abc8b50a2c8be6d482f6e1d3f7"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01.thumb",
+      "sha256": "fad50094363c841033ae160982bd5570f40140b6381a5a69562a9cbdf0898e7a"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01_diffuse.png",
+      "sha256": "4b59b50f7a8a0325c33e86e29f160f59b2385a6f413fccc88287a1c951c39901"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01_normal.png",
+      "sha256": "53f51fd31ec6760c26d377b250bfcdde84be46953f4c72821892b76d13055073"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01.mhmat",
+      "sha256": "9af03afa0f8cf2d24b4fceb0bd0e3c400ae0975b402e0ea491a33fa32c3b560b"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01.mhclo",
+      "sha256": "77561689f0e9eb13537f67e0582ce4e8b93fc7291ea87f57fd86b38b9114d4e1"
+    },
+    {
+      "path": "clothes/male_worksuit01/male_worksuit01_ao.png",
+      "sha256": "1ed5f23c5efab316b98a295e1be7905009e61603657577eb922b4d1c99c46810"
+    },
+    {
+      "path": "clothes/shoes01/shoes01.mhclo",
+      "sha256": "7994e38f7cdcee0bd5f55101660badcce0162fcdfc7f432218dd1eb301626252"
+    },
+    {
+      "path": "clothes/shoes01/shoes01_diffuse.png",
+      "sha256": "50c9a406a7f1cb6aa7b42912348e78f09d0252aa3963c8229cf18dfe8353cdbf"
+    },
+    {
+      "path": "clothes/shoes01/shoes01.thumb",
+      "sha256": "a118291fe3e83e3c616febf52fdb480186c816e7cd4d77d331adffd457421cbb"
+    },
+    {
+      "path": "clothes/shoes01/shoes01_normal.png",
+      "sha256": "a9bfd7223e98b8f93100e89596135e3a94e6044f9db11b4d23cec625c37a4599"
+    },
+    {
+      "path": "clothes/shoes01/shoes01.mhw",
+      "sha256": "b377d91e6d0264521f672c3990c366b2631103accba4921fc3965c2ed5ce395b"
+    },
+    {
+      "path": "clothes/shoes01/shoes01.mhmat",
+      "sha256": "db1711e2dfea4dd8c24459643603a190d9a9da603fd26da5542002a73d740be8"
+    },
+    {
+      "path": "clothes/shoes01/shoes01.obj",
+      "sha256": "eac355a842a8eb8ae2f09fac8dd18a877a24ef2521ed2d6bf38559b42ce4b49a"
+    },
+    {
+      "path": "hair/short01/short01.thumb",
+      "sha256": "7e942d29322841a07a8a3feaf438fb9efb6b54f5b733909cecc51e79dcaca995"
+    },
+    {
+      "path": "hair/short01/short01.mhclo",
+      "sha256": "ae1ffaa98da5753b803b3a173bede4895d2215e6bb94763f3765a71f0e984f35"
+    },
+    {
+      "path": "hair/short01/short01.mhmat",
+      "sha256": "01e2e12ce3f3d3c859225456660acadcdd27d4f4b4d888bcbd6f11998cadd975"
+    },
+    {
+      "path": "hair/short01/short01.obj",
+      "sha256": "d998d8416f9b5d5591f1d756f4d292288d000a6951bc0f4d2e8e72727bbc44fa"
+    },
+    {
+      "path": "hair/short01/short01_diffuse.png",
+      "sha256": "f34a0957184e3d1e911ed59245f874f8d4843f61ee44ff49f43edb4be0196949"
+    }
+  ]
+}

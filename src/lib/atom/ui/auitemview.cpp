@@ -92,6 +92,7 @@ void AuItemView::paintGL()
 		projection.Perspective(45.0*DEG2RAD, 1, .1, 1000);
 
 	SetupLights(m_Model);
+    AuFilamentWorldScope filamentPreview(*m_RenderInfo->re,projection);
 
 	// Render item.
 	if(m_Item)

@@ -111,6 +111,17 @@ docker run --rm \
             -L "$target_prefix/bin" \
                "$target_prefix/qt5/bin"
 
+        # The MXE Mesa opengl32.dll shadows the Windows hardware OpenGL loader.
+        # On some systems its WGL surface cannot be made current, leaving
+        # even the Qt login screen white. Prefer the installed GPU driver;
+        # retain the software backend separately for deliberate testing.
+        mkdir -p "$package_dir/optional-mesa"
+        for software_gl in opengl32.dll libgallium_wgl.dll; do
+            if [[ -f "$package_dir/$software_gl" ]]; then
+                mv -f "$package_dir/$software_gl" "$package_dir/optional-mesa/"
+            fi
+        done
+
         python3 /src/docker/support/export-intellisense.py \
             --compile-commands /build/compile_commands.json \
             --compiler "${MXE_TARGET}-g++" \

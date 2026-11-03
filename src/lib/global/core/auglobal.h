@@ -1811,6 +1811,7 @@ public:
 	}
 
 	static inline const char* PerPixelLightingKey()	{ return "/Settings/PerPixelLighting"; }
+	static inline const char* TextureAnisotropyKey()	{ return "/Settings/TextureAnisotropy"; }
 	static inline const char* PerPixelSkinGlossKey()	{ return "/Settings/PerPixelSkinGloss"; }
 	static inline const char* PerPixelClothGlossKey()	{ return "/Settings/PerPixelClothGloss"; }
 	static inline const char* PerPixelHairGlossKey()	{ return "/Settings/PerPixelHairGloss"; }

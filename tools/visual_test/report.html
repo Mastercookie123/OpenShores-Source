@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>OpenShores visual test lab</title>
+<style>
+body{font:16px system-ui;background:#111720;color:#e4eaf2;margin:24px}h1{margin-bottom:8px}p{max-width:1000px;color:#bbc8d8}select,input,button{font:inherit;margin:6px;padding:5px}a{color:#85c7ff}.controls{position:sticky;top:0;background:#111720;z-index:2;padding:8px 0}.pair{display:flex;gap:16px}.panel{flex:1;min-width:0}.panel img{width:100%;max-height:75vh;object-fit:contain;object-position:top;background:#0e1114}.wipe{position:relative;max-width:750px;margin:auto}.wipe img{width:100%;display:block}.wipe #over{position:absolute;inset:0}pre{white-space:pre-wrap;background:#1c2532;padding:16px}#error{color:#ffaba5}label{white-space:nowrap}
+</style><h1>OpenShores visual test lab</h1><p>Original resources vs candidate, using the same executable, camera and lighting. Mechanical checks verify loading and rendering. Visual quality still requires inspection.</p><p id="scope"></p><p id="error"></p>
+<div class="controls"><select id="fixture"></select><select id="view"><option value="portrait">Portrait</option><option value="body">Full body</option></select><select id="mode"><option>Side by side</option><option>Wipe</option><option>Difference</option></select><label>Wipe <input id="amount" type="range" min="0" max="100" value="50"></label></div>
+<div id="images"></div><pre id="facts"></pre><p><a href="summary.json">Suite metadata</a> · <a id="originalMeta">Original load audit</a> · <a id="candidateMeta">Candidate load audit</a></p>
+<script>
+const report=/*REPORT_DATA*/;
+const fixture=document.querySelector('#fixture'),view=document.querySelector('#view'),mode=document.querySelector('#mode'),amount=document.querySelector('#amount');
+document.querySelector('#scope').textContent=report.scope+' '+report.qualityVerdict;
+document.querySelector('#error').textContent=report.failure?'FAILED: '+report.failure:'';
+for(const c of report.cases){const o=document.createElement('option');o.value=c.id;o.textContent=c.id;fixture.append(o)}
+function render(){const c=report.cases.find(c=>c.id===fixture.value);if(!c)return;const a=c.id+'/original/'+view.value+'.png',b=c.id+'/candidate/'+view.value+'.png';const container=document.querySelector('#images');
+if(mode.value==='Side by side')container.innerHTML='<div class="pair"><div class="panel">Original<img src="'+a+'"></div><div class="panel">Candidate<img src="'+b+'"></div></div>';
+else{container.innerHTML='<div class="wipe"><img src="'+a+'"><img id="over" src="'+b+'"></div>';document.querySelector('#over').style.cssText=mode.value==='Difference'?'mix-blend-mode:difference':'clip-path:inset(0 '+(100-amount.value)+'% 0 0)'}
+document.querySelector('#facts').textContent=JSON.stringify(c,null,2);document.querySelector('#originalMeta').href=c.id+'/original/render.json';document.querySelector('#candidateMeta').href=c.id+'/candidate/render.json';}
+for(const e of [fixture,view,mode,amount])e.addEventListener('input',render);render();
+</script></html>

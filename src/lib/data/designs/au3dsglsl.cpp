@@ -8,14 +8,25 @@
 #undef AuGLDLL		// So gl extension function prototypes work in Windows.
 #endif
 #include "au3dsglsl.h"
+#include "filamentbridge.h"
 //
 #include "aubox.h"
+#include "aubodysurface.h"
 #include "augleffects.h"
 #include "auline.h"
 #include "aumatrix3x3.h"
 #include "auplane.h"
 #include <QFile>
 #include <QThreadPool>
+#include <QCryptographicHash>
+#include <QDir>
+
+Au3dsGLSLModelInstance::~Au3dsGLSLModelInstance() { FilamentForgetModel(this); }
+void Au3dsGLSLModelInstance::DeleteGL() {
+    FilamentForgetModel(this);
+    for(auto& model:m_Models)if(model.VAO())model.DeleteGL();m_Models.clear();
+    for(auto& model:m_ModelsLit)if(model.VAO())model.DeleteGL();m_ModelsLit.clear();
+}
 
 // Note: I tried to use a namespace here instead of a class but could not
 // eliminate compiler warnings when s3ds.h was included from sgleffects.h.
@@ -1261,6 +1272,82 @@ void Au3dsGLSLObject::CreateDeviceObject(AuOpenGLFunctions& GLf, Au3dsGLSLVAO& m
 	model.m_GlowColor = smdl.m_GlowColor;
 }
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <cmath>
+
+AuMatrix4x4 Au3dsGLSLModelInstance::PrototypeBone(int index, const AuMatrix4x4& animated) const
+{
+    return index>=0 && index<m_PrototypeInverseBind.size() ? animated*m_PrototypeInverseBind[index] : animated;
+}
+
+bool Au3dsGLSLModelInstance::CreatePrototypeBody(AuOpenGLFunctions& GLf, const QString& path, const QString& section)
+{
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly) || file.size()>64*1024*1024) return false;
+    QJsonParseError error;
+    auto document=QJsonDocument::fromJson(file.readAll(), &error);
+    if(error.error!=QJsonParseError::NoError || !document.isObject())return false;
+    auto root=document.object();
+    if(root.value("version").toInt()!=2 || !root.value(section).isArray())return false;
+    auto bind=root.value("inverseBind").toArray();
+    if(bind.size()!=61)return false;
+    QVector<AuMatrix4x4> inverseBind;
+    for(auto entry:bind)
+    {
+        auto values=entry.toArray();if(values.size()!=16)return false;
+        double matrix[16];
+        for(int i=0;i<16;i++)
+        {
+            if(!values[i].isDouble() || !std::isfinite(values[i].toDouble()))return false;
+            matrix[i]=values[i].toDouble();
+        }
+        inverseBind.append(AuMatrix4x4(matrix));
+    }
+    auto rows=root.value(section).toArray();
+    if(rows.isEmpty() || rows.size()%3 || rows.size()>600000)return false;
+    Au3dsGLSLTriBodyList mesh;
+    for(int i=0;i<rows.size();i+=3)
+    {
+        AuTriBody triangle;
+        AuPointBody* corners[]={&triangle.m_V0,&triangle.m_V1,&triangle.m_V2};
+        for(int j=0;j<3;j++)
+        {
+            auto row=rows[i+j].toArray();
+            if(row.size()!=16)return false;
+            for(auto value:row)if(!value.isDouble() || !std::isfinite(value.toDouble()))return false;
+            auto& v=*corners[j];
+            v.SetCoord(row[0].toDouble(),row[1].toDouble(),row[2].toDouble());
+            v.m_N=AuPoint(row[3].toDouble(),row[4].toDouble(),row[5].toDouble());
+            if(v.m_N.IsZero())return false;
+            v.m_N.Unit();v.SetTexCoord(row[6].toDouble(),row[7].toDouble());
+            v.m_TopFace=true;v.m_Shine=24;
+            double sum=0;
+            for(int b=0;b<4;b++)
+            {
+                double index=row[8+b*2].toDouble(),weight=row[9+b*2].toDouble();
+                if(index<0 || index>=61 || index!=std::floor(index) || weight<0 || weight>1)return false;
+                v.m_BoneIndex[b]=int(index);v.m_BoneWeight[b]=weight;sum+=weight;
+            }
+            if(sum<.999 || sum>1.001)return false;
+            for(int b=0;b<4;b++)v.m_BoneWeight[b]/=sum;
+        }
+        mesh.append(triangle);
+    }
+    Au3dsGLSLVAO model;model.CreateForBody(GLf,mesh,GL_STATIC_DRAW);
+    model.m_DestBlendFunc=GL_ONE_MINUS_SRC_ALPHA;
+    m_Models.append(model);
+    m_PrototypeInverseBind=inverseBind;
+    return true;
+}
+
+void Au3dsGLSLModelInstance::AppendBodyTriangles(Au3dsGLSLTriBodyList& triangles)
+{
+    for(auto& object : m_Objects)
+        object.LoadModel(triangles, m_Materials, false, m_ModelType, GL_ONE_MINUS_SRC_ALPHA);
+}
+
 void Au3dsGLSLObject::CreateBodyDeviceObject(AuOpenGLFunctions& GLf, Au3dsGLSLVAO& model,
 		const Au3dsGLSLMaterialArray& materials, bool lightsOn, MODEL_TYPE modelType, GLuint destBlendFunc)
 {
@@ -1305,6 +1392,9 @@ void Au3dsGLSLObject::CreateBodyDeviceObject(AuOpenGLFunctions& GLf, Au3dsGLSLVA
 
 	Au3dsGLSLTriBodyList smdl;
 	LoadModel(smdl, materials, lightsOn, modelType, destBlendFunc);
+	if(qEnvironmentVariableIsSet("OPENSHORES_BODY_PARTS") && m_bHasBones)
+        AuBodySurface::SmoothNormals(smdl);
+    AuBodySurface::Refine(smdl, AuBodySurface::Detail());
 	model.CreateForBody(GLf, smdl, GL_STATIC_DRAW);
 	model.m_DestBlendFunc = smdl.m_DestBlendFunc;
 	model.m_GlowColor = smdl.m_GlowColor;
@@ -3760,6 +3850,42 @@ bool Au3dsGLSLModel::Load(const QString& file3dsName, double scale)
 	QFile file3ds(file3dsName);
 	if(file3ds.open(QIODevice::ReadOnly))
 	{
+        // A modular replacement retains the original part identifier and DNA
+        // processing. Verify both sides of the authoring manifest before use.
+        QString root=qEnvironmentVariable("OPENSHORES_BODY_PARTS");
+        if(!root.isEmpty() && file3dsName.startsWith(":data/") && file3dsName.endsWith(".3dsN"))
+        {
+            QFile manifest(QDir(root).filePath("manifest.json"));
+            if(manifest.open(QIODevice::ReadOnly) && manifest.size()<1024*1024)
+            {
+                auto entries=QJsonDocument::fromJson(manifest.readAll()).object().value("files").toObject();
+                QString name=QFileInfo(file3dsName).fileName();
+                auto entry=entries.value(name).toObject();
+                if(!entry.isEmpty())
+                {
+                    auto hash=[](const QByteArray& bytes){return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());};
+                    QString sourceHash=hash(file3ds.readAll());file3ds.seek(0);
+                    QFile replacement(QDir(root).filePath(name));
+                    if(sourceHash==entry.value("sourceSha256").toString() && replacement.open(QIODevice::ReadOnly) &&
+                       replacement.size()<16*1024*1024 && hash(replacement.readAll())==entry.value("assetSha256").toString())
+                    {
+                        replacement.seek(0);
+                        if(Load(replacement,scale))
+                        {
+                            if(qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT"))
+                                qInfo().noquote()<<"VISUAL_ASSET"<<QJsonDocument(QJsonObject{
+                                    {"component",name},{"path",replacement.fileName()},
+                                    {"sha256",entry.value("assetSha256")},{"status","replacement"}}).toJson(QJsonDocument::Compact);
+                            return true;
+                        }
+                    }
+                    qWarning()<<"Modular body part rejected; using original"<<name;
+                    if(qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT"))
+                        qInfo().noquote()<<"VISUAL_ASSET"<<QJsonDocument(QJsonObject{
+                            {"component",name},{"status","rejected"}}).toJson(QJsonDocument::Compact);
+                }
+            }
+        }
 		//qDebug("Au3dsGLSLModel::Load file '%s'", (const char*)file3dsName.toAscii());
 		bool success = Load(file3ds, scale);
 		file3ds.close();

@@ -505,6 +505,13 @@ public:
 
 class AUGL_DLL AuGLTexture
 {
+	static int s_Anisotropy;
+
+public:
+	// Applies to subsequently created mipmapped textures. Existing textures
+	// retain their sampler state until reloaded or the client is restarted.
+	static void SetAnisotropy(int samples) { s_Anisotropy = qBound(1, samples, 16); }
+	static int Anisotropy() { return s_Anisotropy; }
 friend class AuGLEffects;
 
 private:

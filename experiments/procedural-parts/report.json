@@ -1,0 +1,2312 @@
+[
+  {
+    "object": "Cube",
+    "oldTriangles": 390,
+    "newTriangles": 2340,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 390,
+    "newTriangles": 2340,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 237,
+    "newTriangles": 1422,
+    "protectedBoundaryVertices": 67
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 370,
+    "newTriangles": 2220,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 310,
+    "newTriangles": 1860,
+    "protectedBoundaryVertices": 62
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 237,
+    "newTriangles": 1422,
+    "protectedBoundaryVertices": 69
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 16
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 16
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 208,
+    "newTriangles": 1248,
+    "protectedBoundaryVertices": 16
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 244,
+    "newTriangles": 1464,
+    "protectedBoundaryVertices": 16
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 400,
+    "newTriangles": 2400,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 400,
+    "newTriangles": 2400,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 296,
+    "newTriangles": 1776,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 296,
+    "newTriangles": 1776,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Plane",
+    "oldTriangles": 12,
+    "newTriangles": 72,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 700,
+    "newTriangles": 4200,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 556,
+    "newTriangles": 3336,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 604,
+    "newTriangles": 3624,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 416,
+    "newTriangles": 2496,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 390,
+    "newTriangles": 2340,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 416,
+    "newTriangles": 2496,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 390,
+    "newTriangles": 2340,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 560,
+    "newTriangles": 3360,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 466,
+    "newTriangles": 2796,
+    "protectedBoundaryVertices": 64
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 464,
+    "newTriangles": 2784,
+    "protectedBoundaryVertices": 66
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 64,
+    "newTriangles": 384,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 64,
+    "newTriangles": 384,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 96,
+    "newTriangles": 576,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 192,
+    "newTriangles": 1152,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube.006",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube.006",
+    "oldTriangles": 288,
+    "newTriangles": 1728,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube.006",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 520,
+    "newTriangles": 3120,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 424,
+    "newTriangles": 2544,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 370,
+    "newTriangles": 2220,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 310,
+    "newTriangles": 1860,
+    "protectedBoundaryVertices": 62
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 274,
+    "newTriangles": 1644,
+    "protectedBoundaryVertices": 68
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 542,
+    "newTriangles": 3252,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 482,
+    "newTriangles": 2892,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 32
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 28,
+    "newTriangles": 168,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 912,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 912,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 912,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 912,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1368,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1368,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 128,
+    "newTriangles": 768,
+    "protectedBoundaryVertices": 12
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 234,
+    "newTriangles": 1404,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 182,
+    "newTriangles": 1092,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 224,
+    "newTriangles": 1344,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 224,
+    "newTriangles": 1344,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 140,
+    "newTriangles": 840,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 224,
+    "newTriangles": 1344,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 288,
+    "newTriangles": 1728,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 206,
+    "newTriangles": 1236,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 98,
+    "newTriangles": 588,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 28,
+    "newTriangles": 168,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 192,
+    "newTriangles": 1152,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 396,
+    "newTriangles": 3108,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 396,
+    "newTriangles": 3108,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 208,
+    "newTriangles": 1596,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 342,
+    "newTriangles": 2706,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 286,
+    "newTriangles": 2250,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 234,
+    "newTriangles": 1806,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube_NonetxBody.pngtx",
+    "oldTriangles": 206,
+    "newTriangles": 1578,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1128,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1128,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1128,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1128,
+    "protectedBoundaryVertices": 36
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2448,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1866,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2448,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1866,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2568,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2436,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2568,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2436,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 176,
+    "newTriangles": 1528,
+    "protectedBoundaryVertices": 18
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 290,
+    "newTriangles": 1786,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 180,
+    "newTriangles": 884,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 2004,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 2244,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 2004,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 2244,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 220,
+    "newTriangles": 1716,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 198,
+    "newTriangles": 1518,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 112,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 152,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 88,
+    "newTriangles": 720,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 88,
+    "newTriangles": 720,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 88,
+    "newTriangles": 720,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 88,
+    "newTriangles": 720,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 64,
+    "newTriangles": 432,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 64,
+    "newTriangles": 576,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 96,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 184,
+    "newTriangles": 1320,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 144,
+    "newTriangles": 1032,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 288,
+    "newTriangles": 2058,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 320,
+    "newTriangles": 2298,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 216,
+    "newTriangles": 1704,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 52,
+    "newTriangles": 348,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 192,
+    "newTriangles": 1488,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_NonetxBody.png",
+    "oldTriangles": 112,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 70,
+    "newTriangles": 550,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 70,
+    "newTriangles": 550,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 70,
+    "newTriangles": 550,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 70,
+    "newTriangles": 550,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 190,
+    "newTriangles": 1622,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 190,
+    "newTriangles": 1622,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 190,
+    "newTriangles": 1622,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 190,
+    "newTriangles": 1622,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 596,
+    "newTriangles": 4836,
+    "protectedBoundaryVertices": 106
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 222,
+    "newTriangles": 1710,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 220,
+    "newTriangles": 1924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 220,
+    "newTriangles": 1692,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 244,
+    "newTriangles": 1464,
+    "protectedBoundaryVertices": 99
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 244,
+    "newTriangles": 1464,
+    "protectedBoundaryVertices": 99
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 150,
+    "newTriangles": 900,
+    "protectedBoundaryVertices": 66
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 338,
+    "newTriangles": 2028,
+    "protectedBoundaryVertices": 84
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 208,
+    "newTriangles": 1248,
+    "protectedBoundaryVertices": 49
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 64
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 64
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 250,
+    "newTriangles": 1500,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 250,
+    "newTriangles": 1500,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 250,
+    "newTriangles": 1500,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 250,
+    "newTriangles": 1500,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1368,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 228,
+    "newTriangles": 1368,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Plane",
+    "oldTriangles": 1268,
+    "newTriangles": 7608,
+    "protectedBoundaryVertices": 996
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 178,
+    "newTriangles": 1068,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 1824,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 1824,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 280,
+    "newTriangles": 1680,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 440,
+    "newTriangles": 2640,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 206,
+    "newTriangles": 1236,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 210,
+    "newTriangles": 1260,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 262,
+    "newTriangles": 1572,
+    "protectedBoundaryVertices": 33
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 238,
+    "newTriangles": 1428,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 182,
+    "newTriangles": 1092,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 244,
+    "newTriangles": 1464,
+    "protectedBoundaryVertices": 99
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 244,
+    "newTriangles": 1464,
+    "protectedBoundaryVertices": 99
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 150,
+    "newTriangles": 900,
+    "protectedBoundaryVertices": 66
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 338,
+    "newTriangles": 2028,
+    "protectedBoundaryVertices": 84
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 208,
+    "newTriangles": 1248,
+    "protectedBoundaryVertices": 49
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 64
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 64
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 24
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 314,
+    "newTriangles": 1884,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 332,
+    "newTriangles": 1992,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 314,
+    "newTriangles": 1884,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 332,
+    "newTriangles": 1992,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 314,
+    "newTriangles": 1884,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 314,
+    "newTriangles": 1884,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 178,
+    "newTriangles": 1068,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 464,
+    "newTriangles": 2784,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 202,
+    "newTriangles": 1212,
+    "protectedBoundaryVertices": 31
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 464,
+    "newTriangles": 2784,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 202,
+    "newTriangles": 1212,
+    "protectedBoundaryVertices": 31
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 280,
+    "newTriangles": 1680,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 344,
+    "newTriangles": 2064,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 440,
+    "newTriangles": 2640,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 206,
+    "newTriangles": 1236,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 210,
+    "newTriangles": 1260,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 262,
+    "newTriangles": 1572,
+    "protectedBoundaryVertices": 33
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 238,
+    "newTriangles": 1428,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 182,
+    "newTriangles": 1092,
+    "protectedBoundaryVertices": 50
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 256,
+    "newTriangles": 1536,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 256,
+    "newTriangles": 1536,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 528,
+    "newTriangles": 3168,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 588,
+    "newTriangles": 3528,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 492,
+    "newTriangles": 2952,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 552,
+    "newTriangles": 3312,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 528,
+    "newTriangles": 3168,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 156,
+    "newTriangles": 936,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 400,
+    "newTriangles": 2400,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 400,
+    "newTriangles": 2400,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 230,
+    "newTriangles": 1380,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 230,
+    "newTriangles": 1380,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 22,
+    "newTriangles": 132,
+    "protectedBoundaryVertices": 16
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 516,
+    "newTriangles": 3096,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 612,
+    "newTriangles": 3672,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 588,
+    "newTriangles": 3528,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 416,
+    "newTriangles": 2496,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 240,
+    "newTriangles": 1440,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 416,
+    "newTriangles": 2496,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 240,
+    "newTriangles": 1440,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 456,
+    "newTriangles": 2736,
+    "protectedBoundaryVertices": 28
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 552,
+    "newTriangles": 3312,
+    "protectedBoundaryVertices": 58
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 552,
+    "newTriangles": 3312,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 128,
+    "newTriangles": 768,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 204,
+    "newTriangles": 1224,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 144,
+    "newTriangles": 864,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 232,
+    "newTriangles": 1392,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 264,
+    "newTriangles": 1584,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 552,
+    "newTriangles": 3312,
+    "protectedBoundaryVertices": 28
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 540,
+    "newTriangles": 3240,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 492,
+    "newTriangles": 2952,
+    "protectedBoundaryVertices": 42
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 552,
+    "newTriangles": 3312,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 528,
+    "newTriangles": 3168,
+    "protectedBoundaryVertices": 56
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 364,
+    "newTriangles": 2184,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 14
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 388,
+    "newTriangles": 2328,
+    "protectedBoundaryVertices": 28
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 364,
+    "newTriangles": 2184,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 204,
+    "newTriangles": 1224,
+    "protectedBoundaryVertices": 38
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 204,
+    "newTriangles": 1224,
+    "protectedBoundaryVertices": 38
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 28,
+    "newTriangles": 168,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 84,
+    "newTriangles": 504,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 76
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 76
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 76
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 80,
+    "newTriangles": 480,
+    "protectedBoundaryVertices": 76
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 382,
+    "newTriangles": 2292,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 382,
+    "newTriangles": 2292,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 484,
+    "newTriangles": 2904,
+    "protectedBoundaryVertices": 196
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 234,
+    "newTriangles": 1404,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 210,
+    "newTriangles": 1260,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 154,
+    "newTriangles": 924,
+    "protectedBoundaryVertices": 19
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 224,
+    "newTriangles": 1344,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 224,
+    "newTriangles": 1344,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 164,
+    "newTriangles": 984,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 140,
+    "newTriangles": 840,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 34
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 72,
+    "newTriangles": 432,
+    "protectedBoundaryVertices": 9
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 74,
+    "newTriangles": 444,
+    "protectedBoundaryVertices": 9
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 88,
+    "newTriangles": 528,
+    "protectedBoundaryVertices": 9
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 176,
+    "newTriangles": 1056,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 104,
+    "newTriangles": 624,
+    "protectedBoundaryVertices": 9
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 208,
+    "newTriangles": 1248,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 240,
+    "newTriangles": 1440,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 206,
+    "newTriangles": 1236,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 98,
+    "newTriangles": 588,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 34
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 28,
+    "newTriangles": 168,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube_None",
+    "oldTriangles": 192,
+    "newTriangles": 1152,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 166,
+    "newTriangles": 996,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 166,
+    "newTriangles": 996,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 172,
+    "newTriangles": 1032,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 292,
+    "newTriangles": 1752,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 140,
+    "newTriangles": 840,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 216,
+    "newTriangles": 1296,
+    "protectedBoundaryVertices": 20
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cylinder",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 352,
+    "newTriangles": 2112,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 382,
+    "newTriangles": 2292,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 350,
+    "newTriangles": 2100,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 382,
+    "newTriangles": 2292,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Sphere.011",
+    "oldTriangles": 520,
+    "newTriangles": 3120,
+    "protectedBoundaryVertices": 104
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 306,
+    "newTriangles": 1836,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 266,
+    "newTriangles": 1596,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 266,
+    "newTriangles": 1596,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 1824,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 304,
+    "newTriangles": 1824,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 236,
+    "newTriangles": 1416,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 196,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 196,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 13
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 112,
+    "newTriangles": 672,
+    "protectedBoundaryVertices": 13
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 136,
+    "newTriangles": 816,
+    "protectedBoundaryVertices": 13
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 272,
+    "newTriangles": 1632,
+    "protectedBoundaryVertices": 8
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 160,
+    "newTriangles": 960,
+    "protectedBoundaryVertices": 13
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 320,
+    "newTriangles": 1920,
+    "protectedBoundaryVertices": 8
+  },
+  {
+    "object": "Cube.002",
+    "oldTriangles": 368,
+    "newTriangles": 2208,
+    "protectedBoundaryVertices": 8
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 306,
+    "newTriangles": 1836,
+    "protectedBoundaryVertices": 0
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 126,
+    "newTriangles": 756,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 236,
+    "newTriangles": 1416,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 196,
+    "newTriangles": 1176,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 56,
+    "newTriangles": 336,
+    "protectedBoundaryVertices": 30
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 172,
+    "newTriangles": 1032,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 362,
+    "newTriangles": 2172,
+    "protectedBoundaryVertices": 4
+  },
+  {
+    "object": "Cube.001",
+    "oldTriangles": 172,
+    "newTriangles": 1032,
+    "protectedBoundaryVertices": 15
+  },
+  {
+    "object": "Cube",
+    "oldTriangles": 172,
+    "newTriangles": 1032,
+    "protectedBoundaryVertices": 15
+  }
+]

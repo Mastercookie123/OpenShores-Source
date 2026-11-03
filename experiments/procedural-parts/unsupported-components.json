@@ -1,0 +1,34 @@
+[
+  {
+    "file": "2LegClosedToLeg.3dsN",
+    "reason": "Invalid chunk size"
+  },
+  {
+    "file": "2NoLimbToNoLimb.3dsN",
+    "reason": "No editable interior detail; retain original component"
+  },
+  {
+    "file": "2TopLimbToButt.3dsN",
+    "reason": "unsupported layout"
+  },
+  {
+    "file": "4HeadCrest01.3dsN",
+    "reason": "unsupported layout"
+  },
+  {
+    "file": "5Neck12.3dsN",
+    "reason": "Invalid chunk size"
+  },
+  {
+    "file": "5Neck22.3dsN",
+    "reason": "Invalid chunk size"
+  },
+  {
+    "file": "5Neck32.3dsN",
+    "reason": "Invalid chunk size"
+  },
+  {
+    "file": "5Neck42.3dsN",
+    "reason": "Invalid chunk size"
+  }
+]

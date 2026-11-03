@@ -8,6 +8,7 @@
 //
 #include "augleffects.h"
 #include "auglslerr.h"
+#include "aubodysurface.h"
 #include "auscface.h"
 #include "hashpack.h"
 #include <QCursor>
@@ -1747,11 +1748,11 @@ bool AuRenderCounters::s_On = false;
 quint64 AuRenderCounters::s_DrawCalls = 0;
 quint64 AuRenderCounters::s_Vertices = 0;
 
-bool AuGLSLShader::s_PerPixelLighting = false;
+bool AuGLSLShader::s_PerPixelLighting = true;
 float AuGLSLShader::s_PerPixelSkinGloss = .4f;
 float AuGLSLShader::s_PerPixelClothGloss = .1f;
 float AuGLSLShader::s_PerPixelHairGloss = .5f;
-bool AuGLSLShader::s_Shadows = false;
+bool AuGLSLShader::s_Shadows = true;
 bool AuGLSLShader::s_ShadowsDebug = false;
 bool AuGLSLShader::s_ShadowMaps = true;
 bool AuGLSLShader::s_ShadowMapsSupported = true;
@@ -1962,6 +1963,7 @@ AuGLSLShader::AuGLSLShader(AuOpenGLFunctions& GLf, GLenum shaderType, const QStr
 	QHash<QString, QByteArray>::const_iterator psi = s_GLSLProgramSrc.find(QString("%1.glsl").arg(shaderName));
 	if(psi == s_GLSLProgramSrc.end() || (*psi).isEmpty())
 	{
+        if(qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT"))qFatal("Missing shader resource: %s",qPrintable(shaderName));
 		// Abort if a program source fails to load.
 		QString title = QObject::tr("%1 Load Error").arg(shaderType == GL_VERTEX_SHADER ? "Vertex Shader" : "Fragment Shader");
 		AuGLSLErr mb(title,
@@ -1975,6 +1977,7 @@ AuGLSLShader::AuGLSLShader(AuOpenGLFunctions& GLf, GLenum shaderType, const QStr
 
 	// Create an OpenGL shader object.
 	m_Shader = GLf.glCreateShader(shaderType);
+    AuFilamentShader(m_Shader,shaderName);
 
 	// Read the source code from the hash table of compressed source code.
 	QByteArray src = AuUncompress(*psi, __FILE__, __LINE__,shaderName);
@@ -2036,6 +2039,22 @@ AuGLSLShader::AuGLSLShader(AuOpenGLFunctions& GLf, GLenum shaderType, const QStr
 	}
 
 	// Resolve our special includes.
+	if(AuBodySurface::Detail() > 0 || qEnvironmentVariableIsSet("OPENSHORES_BODY_PARTS"))
+	{
+		int end = src.indexOf('\n', src.indexOf("#version"));
+		if(end >= 0) src.insert(end + 1, "#define CHARACTER_SURFACE_ENABLED\n");
+	}
+	if(src.contains("#CharacterSurface"))
+	{
+		auto include = s_GLSLProgramSrc.constFind("H_CharacterSurface.glsl");
+		if(include == s_GLSLProgramSrc.constEnd())
+		{
+			qCritical() << "Missing character surface shader include";
+			m_Shader = 0;
+			return;
+		}
+		src.replace("#CharacterSurface", AuUncompress(*include, __FILE__, __LINE__, shaderName));
+	}
 	if(src.contains("#SunLightGlobe"))
 	{
 		QHash<QString, QByteArray>::const_iterator lsi = s_GLSLProgramSrc.find(QString("H_SunLightGlobe.glsl"));
@@ -2105,6 +2124,7 @@ AuGLSLShader::AuGLSLShader(AuOpenGLFunctions& GLf, GLenum shaderType, const QStr
 	GLf.glCompileShader(m_Shader);
 	GLint compiled;
 	GLf.glGetShaderiv(m_Shader, GL_COMPILE_STATUS, &compiled);
+    if(!compiled&&qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT"))qFatal("Shader %s failed: %s",qPrintable(shaderName),qPrintable(GetInfoLog(GLf)));
 #if !defined(QT_NO_DEBUG)
 	DumpInfoLog(GLf);
 #endif
@@ -2573,6 +2593,7 @@ void AuGLSLColor::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2632,6 +2653,7 @@ void AuGLSLLine::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2691,6 +2713,7 @@ void AuGLSLLineFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2752,6 +2775,7 @@ void AuGLSLNearStar::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2812,6 +2836,7 @@ void AuGLSLFarStar::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2872,6 +2897,7 @@ void AuGLSLGalaxyStar::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2936,6 +2962,7 @@ void AuGLSLGalaxyCloud::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -2999,6 +3026,7 @@ void AuGLSLNebula::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3058,6 +3086,7 @@ void AuGLSLSkyBox::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3131,6 +3160,7 @@ void AuGLSLNearGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3204,6 +3234,7 @@ void AuGLSLNearRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3281,6 +3312,7 @@ void AuGLSLNearGlobeFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3356,6 +3388,7 @@ void AuGLSLNearRingworldFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3435,6 +3468,7 @@ void AuGLSLNearGlobeLava::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3508,6 +3542,7 @@ void AuGLSLNearGlobeLavaFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3583,6 +3618,7 @@ void AuGLSLNearRingworldGlow::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramO
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3660,6 +3696,7 @@ void AuGLSLNearRingworldGlowFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgr
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3738,6 +3775,7 @@ void AuGLSLGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3804,6 +3842,7 @@ void AuGLSLGlobeFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3869,6 +3908,7 @@ void AuGLSLRingworldFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -3935,6 +3975,7 @@ void AuGLSLGlobeLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4017,6 +4058,7 @@ void AuGLSLGlobeLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4100,6 +4142,7 @@ void AuGLSLRingworldLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramO
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4188,6 +4231,7 @@ void AuGLSLTerrainLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4321,6 +4365,7 @@ void AuGLSLTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4459,6 +4504,7 @@ void AuGLSLRingworldTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLP
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4600,6 +4646,7 @@ void AuGLSLWater::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4706,6 +4753,7 @@ void AuGLSLWaterRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4814,6 +4862,7 @@ void AuGLSLWaterNoBump::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -4916,6 +4965,7 @@ void AuGLSLWaterRingworldNoBump::Build(AuOpenGLFunctions& GLf, const AuGLSLProgr
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5022,6 +5072,7 @@ void AuGLSLWaterNoHole::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5126,6 +5177,7 @@ void AuGLSLWaterRingworldNoHole::Build(AuOpenGLFunctions& GLf, const AuGLSLProgr
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5232,6 +5284,7 @@ void AuGLSLWaterNoBumpNoHole::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramO
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5332,6 +5385,7 @@ void AuGLSLWaterRingworldNoBumpNoHole::Build(AuOpenGLFunctions& GLf, const AuGLS
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5436,6 +5490,7 @@ void AuGLSLLava::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5536,6 +5591,7 @@ void AuGLSLAtmosphere::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5607,6 +5663,7 @@ void AuGLSLAtmosphereRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgra
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5682,6 +5739,7 @@ void AuGLSLCloud::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5762,6 +5820,7 @@ void AuGLSLCloudRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5844,6 +5903,7 @@ void AuGLSLFarGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5910,6 +5970,7 @@ void AuGLSLFarGlobeLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -5983,6 +6044,7 @@ void AuGLSLFarGlobeLitClouds::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramO
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6060,6 +6122,7 @@ void AuGLSLFarGlobeLitLava::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6133,6 +6196,7 @@ void AuGLSLFarGlobeLitLavaClouds::Build(AuOpenGLFunctions& GLf, const AuGLSLProg
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6211,6 +6275,7 @@ void AuGLSLFarRingworldLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6288,6 +6353,7 @@ void AuGLSLFarRingworldLitClouds::Build(AuOpenGLFunctions& GLf, const AuGLSLProg
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6370,6 +6436,7 @@ void AuGLSLFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6505,6 +6572,7 @@ void AuGLSLFloraRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6635,6 +6703,7 @@ void AuGLSLAquaticFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6761,6 +6830,7 @@ void AuGLSLAquaticFloraRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProg
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -6891,6 +6961,7 @@ void AuGLSLRock::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7016,6 +7087,7 @@ void AuGLSLRockRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7143,6 +7215,7 @@ void AuGLSLSpriteActualSize::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7203,6 +7276,7 @@ void AuGLSLSpriteSize::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7265,6 +7339,7 @@ void AuGLSLSpriteSizeColor::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7326,6 +7401,7 @@ void AuGLSLFlag::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7450,6 +7526,7 @@ void AuGLSLRingworldFlag::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7578,6 +7655,7 @@ void AuGLSLShadowSquare::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7650,6 +7728,7 @@ void AuGLSLRingworldHull::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7726,6 +7805,7 @@ void AuGLSLRingworldHullFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7804,6 +7884,7 @@ void AuGLSLRingworldStatue::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7893,6 +7974,7 @@ void AuGLSLRingworldTerrainStatue::Build(AuOpenGLFunctions& GLf, const AuGLSLPro
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -7981,6 +8063,7 @@ void AuGLSLRain::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8065,6 +8148,7 @@ void AuGLSLRainRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8152,6 +8236,7 @@ void AuGLSLSnow::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8251,6 +8336,7 @@ void AuGLSLSnowRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8352,6 +8438,7 @@ void AuGLSLBlackHole::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8413,6 +8500,7 @@ void AuGLSLBlackHoleSphere::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8472,6 +8560,7 @@ void AuGLSLPhotonSphere::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8533,6 +8622,7 @@ void AuGLSLModelTexColor::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8660,6 +8750,7 @@ void AuGLSLModelTexFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8783,6 +8874,7 @@ void AuGLSLModelTexFogGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -8907,6 +8999,7 @@ void AuGLSLModelTexFogRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgr
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9035,6 +9128,7 @@ void AuGLSLModelTex::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9155,6 +9249,7 @@ void AuGLSLModel::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9271,6 +9366,7 @@ void AuGLSLTexture::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9341,6 +9437,7 @@ void AuGLSLTexBar::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9405,6 +9502,7 @@ void AuGLSLTexOffset::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9467,6 +9565,7 @@ void AuGLSLWarpTunnel::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9529,6 +9628,7 @@ void AuGLSLShield::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9597,6 +9697,7 @@ void AuGLSLShieldHits::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9671,6 +9772,7 @@ void AuGLSLGasGiant::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9757,6 +9859,7 @@ void AuGLSLGasGiantLayer::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9844,6 +9947,7 @@ void AuGLSLSplat::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -9910,6 +10014,7 @@ void AuGLSLAnimal::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10056,6 +10161,7 @@ void AuGLSLAnimalFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10209,6 +10315,7 @@ void AuGLSLAnimalGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10356,6 +10463,7 @@ void AuGLSLAnimalGlobeFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10510,6 +10618,7 @@ void AuGLSLAnimalRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10661,6 +10770,7 @@ void AuGLSLAnimalRingworldFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgram
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10820,6 +10930,7 @@ void AuGLSLAnimalClothing::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -10967,6 +11078,7 @@ void AuGLSLAnimalClothingFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramO
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11116,6 +11228,7 @@ void AuGLSLAnimalClothingGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgra
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11264,6 +11377,7 @@ void AuGLSLAnimalClothingGlobeFog::Build(AuOpenGLFunctions& GLf, const AuGLSLPro
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11414,6 +11528,7 @@ void AuGLSLAnimalClothingRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLPr
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11566,6 +11681,7 @@ void AuGLSLAnimalClothingRingworldFog::Build(AuOpenGLFunctions& GLf, const AuGLS
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11719,6 +11835,7 @@ void AuGLSLAnimalHair::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11850,6 +11967,7 @@ void AuGLSLAnimalHairFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -11983,6 +12101,7 @@ void AuGLSLAnimalHairGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12115,6 +12234,7 @@ void AuGLSLAnimalHairGlobeFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgram
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12249,6 +12369,7 @@ void AuGLSLAnimalHairRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgra
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12385,6 +12506,7 @@ void AuGLSLAnimalHairRingworldFog::Build(AuOpenGLFunctions& GLf, const AuGLSLPro
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12522,6 +12644,7 @@ void AuGLSLBody::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12652,6 +12775,7 @@ void AuGLSLBodyFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12784,6 +12908,7 @@ void AuGLSLBodyGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -12915,6 +13040,7 @@ void AuGLSLBodyFogGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13048,6 +13174,7 @@ void AuGLSLBodyRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13183,6 +13310,7 @@ void AuGLSLBodyFogRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOp
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13321,6 +13449,7 @@ void AuGLSLAnimalDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 	m_GLf->glBindAttribLocation(m_Program, 3, "boneWeight");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13371,6 +13500,7 @@ void AuGLSLBodyDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 	m_GLf->glBindAttribLocation(m_Program, 4, "boneWeight");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13419,6 +13549,7 @@ void AuGLSLModelDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 	m_GLf->glBindAttribLocation(m_Program, 1, "position");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13465,6 +13596,7 @@ void AuGLSLGlobeDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 	m_GLf->glBindAttribLocation(m_Program, 0, "position");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13514,6 +13646,7 @@ void AuGLSLScDepthAlpha::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& o
 	m_GLf->glBindAttribLocation(m_Program, 2, "texCoordIndex");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13566,6 +13699,7 @@ void AuGLSLFloraDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 	m_GLf->glBindAttribLocation(m_Program, 2, "texCoordMovement");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13621,6 +13755,7 @@ void AuGLSLScDepth::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 	m_GLf->glBindAttribLocation(m_Program, 0, "positionShine");
 
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13679,6 +13814,7 @@ void AuGLSLSc::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13812,6 +13948,7 @@ void AuGLSLScFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -13947,6 +14084,7 @@ void AuGLSLScGlobe::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt)
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -14081,6 +14219,7 @@ void AuGLSLScGlobeFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -14217,6 +14356,7 @@ void AuGLSLScRingworld::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& op
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -14355,6 +14495,7 @@ void AuGLSLScRingworldFog::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt&
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)
@@ -14491,6 +14632,7 @@ void AuGLSLLavaNoBump::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 
 	// Link the shader program.
 	m_GLf->glLinkProgram(m_Program);
+    AuFilamentShader(m_Program,QStringLiteral("@program"));
 	GLint linked;
 	m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
 #if !defined(QT_NO_DEBUG)

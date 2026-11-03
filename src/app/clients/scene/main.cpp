@@ -20,6 +20,8 @@
 #include <QSettings>
 #include "auglobal.h"
 #include "auglsl.h"
+#include "augleffects.h"
+#include "aubodysurface.h"
 #include <signal.h>
 
 void SignalHandler(int value)
@@ -70,6 +72,21 @@ int main(int argc, char** argv)
 		//QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
 		// Must set default OpenGL version before app constructor, particularly for Mac.
+		for(int i=1; i<argc; ++i)
+			if(QString::fromLocal8Bit(argv[i]) == "-human-prototype")
+                qWarning("The fixed human prototype is retired; using procedural body parts.");
+            else if(QString::fromLocal8Bit(argv[i]) == "-renderer-filament")
+                qputenv("OPENSHORES_RENDERER","filament");
+            else if(QString::fromLocal8Bit(argv[i]) == "-renderer-filament-world")
+                qputenv("OPENSHORES_RENDERER","filament-world");
+            else if(QString::fromLocal8Bit(argv[i]) == "-body-parts-enhanced")
+                qputenv("OPENSHORES_BODY_PARTS",exe.absoluteDir().filePath("body-parts").toUtf8());
+            else if(QString::fromLocal8Bit(argv[i]) == "-visual-overhaul")
+                qputenv("OPENSHORES_BODY_PARTS",exe.absoluteDir().filePath("body-parts-visual").toUtf8());
+			else if(QString::fromLocal8Bit(argv[i]) == "-character-refined")
+				AuBodySurface::SetDetail(2);
+			else if(QString::fromLocal8Bit(argv[i]) == "-character-classic")
+				AuBodySurface::SetDetail(0);
 		QSurfaceFormat glformat;
 		glformat.setProfile(QSurfaceFormat::CoreProfile);
 		glformat.setVersion(GLMajorVersion, GLMinorVersion);
@@ -80,11 +97,28 @@ int main(int argc, char** argv)
 				if(QString::fromLocal8Bit(argv[i]) == "-ini")
 					settingsFormat = QSettings::IniFormat;
 			QSettings displaySettings(settingsFormat, QSettings::UserScope, "OpenShores", "OpenShores");
-			AuGLSLShader::SetPerPixelLighting(displaySettings.value(AuGlobal::PerPixelLightingKey(), false).toBool());
+			// An explicit launch option lets existing installations opt into the
+			// enhanced defaults without discarding unrelated display preferences.
+			for(int i=1; i<argc; i++)
+				if(QString::fromLocal8Bit(argv[i]) == "-graphics-enhanced" ||
+					QString::fromLocal8Bit(argv[i]) == "-graphics-classic")
+				{
+					const bool enhanced = QString::fromLocal8Bit(argv[i]) == "-graphics-enhanced";
+					displaySettings.setValue(AuGlobal::PerPixelLightingKey(), enhanced);
+					displaySettings.setValue(AuGlobal::ShadowsKey(), enhanced);
+					displaySettings.setValue(AuGlobal::ShadowMapsKey(), enhanced);
+					displaySettings.setValue(AuGlobal::TextureAnisotropyKey(), enhanced ? 8 : 1);
+					displaySettings.setValue("/Settings/GroundTextureSize", enhanced ? 256 : 128);
+					displaySettings.setValue("/Settings/PlantTextureSize", enhanced ? 512 : 256);
+					displaySettings.setValue("/Settings/SkyBoxSize", enhanced ? 2048 : 1024);
+					displaySettings.sync();
+				}
+			AuGLTexture::SetAnisotropy(displaySettings.value(AuGlobal::TextureAnisotropyKey(), 8).toInt());
+			AuGLSLShader::SetPerPixelLighting(displaySettings.value(AuGlobal::PerPixelLightingKey(), true).toBool());
 			AuGLSLShader::SetPerPixelSkinGloss(displaySettings.value(AuGlobal::PerPixelSkinGlossKey(), .4).toFloat());
 			AuGLSLShader::SetPerPixelClothGloss(displaySettings.value(AuGlobal::PerPixelClothGlossKey(), .1).toFloat());
 			AuGLSLShader::SetPerPixelHairGloss(displaySettings.value(AuGlobal::PerPixelHairGlossKey(), .5).toFloat());
-			AuGLSLShader::SetShadows(displaySettings.value(AuGlobal::ShadowsKey(), false).toBool());
+			AuGLSLShader::SetShadows(displaySettings.value(AuGlobal::ShadowsKey(), true).toBool());
 			AuGLSLShader::SetShadowsDebug(displaySettings.value(AuGlobal::ShadowsDebugKey(), false).toBool());
 			AuGLSLShader::SetShadowMaps(displaySettings.value(AuGlobal::ShadowMapsKey(), true).toBool());
 			AuGLSLShader::SetShadowMapSoftness(displaySettings.value(AuGlobal::ShadowMapSoftnessKey(), 1).toInt());
@@ -94,6 +128,10 @@ int main(int argc, char** argv)
 			AuRenderCounters::s_On = displaySettings.value(AuGlobal::RenderCountersKey(), false).toBool();
 			AuGLSLShader::SetShadowCasters(displaySettings.value(AuGlobal::ShadowCastersKey(), 15).toUInt());
 			AuGLSLShader::SetShadowSecondSun(displaySettings.value(AuGlobal::ShadowSecondSunKey(), false).toBool());
+            // The live hybrid renderer needs local-light maps for night/indoor
+            // shadows on the GL world as well as on Filament characters.
+            if(qgetenv("OPENSHORES_RENDERER").startsWith("filament"))
+                displaySettings.setValue(AuGlobal::ShadowLightsKey(),2);
 			AuGLSLShader::SetShadowLights(displaySettings.value(AuGlobal::ShadowLightsKey(), 0).toInt());
 			AuGLSLShader::SetShadowCasterLimitMeters(SSF_Creatures,
 					displaySettings.value(AuGlobal::ShadowCreatureDistanceKey(), 100).toInt());
@@ -128,6 +166,16 @@ int main(int argc, char** argv)
 		AuClientFrame cw;
 		a.SetFrame(&cw);
 		cw.showNormal();
+        if(qgetenv("OPENSHORES_RENDERER")=="filament")
+            cw.setWindowTitle(cw.windowTitle()+" - Filament R2 (lamp shadows)");
+        else if(qgetenv("OPENSHORES_RENDERER")=="filament-world")
+        {
+#ifdef NDEBUG
+            cw.setWindowTitle(cw.windowTitle()+" - Filament R8 Release");
+#else
+            cw.setWindowTitle(cw.windowTitle()+" - Filament R8 (optimized capture)");
+#endif
+        }
 
 		// Start chuggin'.
 		returnValue = a.exec();

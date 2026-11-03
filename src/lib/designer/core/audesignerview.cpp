@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "audesignerview.h"
+void AuFilamentWorldOrientation(const AuMatrix4x4&);
 //
 #include "aubddesignprops.h"
 #include "aubdfinalizedlg.h"
@@ -3028,6 +3029,8 @@ void AuDesignerView::RenderScene(DaPerson* sceneAtom)
 {
 	// Setup scene projection matrices.
 	SetupProjection();
+    AuFilamentWorldScope filamentScene(*m_RenderInfo->re,m_tProjection);
+    AuFilamentWorldOrientation(m_tCamera.Inverse());
 
 	// Configure scene render info.
 	m_RenderInfo->fade = m_Fade * g_Au.SoundEffectsGain();	// Fade overall sound volume with screen fade.

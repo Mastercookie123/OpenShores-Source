@@ -1,2 +1,5 @@
 # WSL executes these scripts even when the checkout lives on Windows.
 docker/**/*.sh text eol=lf
+
+# Deployment scripts also run inside Linux containers.
+*.sh text eol=lf

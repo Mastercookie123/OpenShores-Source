@@ -106,9 +106,7 @@ public:	// Methods
 #define GLMajorVersion					3
 #define GLMinorVersion					2
 
-class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_3_2_Core
-{
-};
+using AuOpenGLBase = QOpenGLFunctions_3_2_Core;
 
 #else
 #include "AuGLVer.h"
@@ -120,9 +118,7 @@ class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_3_2_Core
 #define GLMajorVersion					4
 #define GLMinorVersion					1
 
-class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_4_1_Core
-{
-};
+using AuOpenGLBase = QOpenGLFunctions_4_1_Core;
 
 #elif defined(AUGL33)
 // OpenGL 3.3
@@ -131,9 +127,7 @@ class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_4_1_Core
 #define GLMajorVersion					3
 #define GLMinorVersion					3
 
-class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_3_3_Core
-{
-};
+using AuOpenGLBase = QOpenGLFunctions_3_3_Core;
 
 #elif defined(AUGL32)
 // OpenGL 3.2
@@ -142,13 +136,30 @@ class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_3_3_Core
 #define GLMajorVersion					3
 #define GLMinorVersion					2
 
-class AUGL_DLL AuOpenGLFunctions : public QOpenGLFunctions_3_2_Core
-{
-};
+using AuOpenGLBase = QOpenGLFunctions_3_2_Core;
 
 #endif	// AUGLnn
 
 #endif	// Q_OS_WIN
+
+#include "aufilamentworld.h"
+class AUGL_DLL AuOpenGLFunctions : public AuOpenGLBase
+{
+public:
+    void glDrawArrays(GLenum mode,GLint first,GLsizei count){if(!AuFilamentDraw(*this,mode,first,count,0,nullptr,1))AuOpenGLBase::glDrawArrays(mode,first,count);}
+    void glDrawElements(GLenum mode,GLsizei count,GLenum type,const void* indices){if(!AuFilamentDraw(*this,mode,0,count,type,indices,1))AuOpenGLBase::glDrawElements(mode,count,type,indices);}
+    void glDrawArraysInstanced(GLenum mode,GLint first,GLsizei count,GLsizei instances){if(!AuFilamentDraw(*this,mode,first,count,0,nullptr,instances))AuOpenGLBase::glDrawArraysInstanced(mode,first,count,instances);}
+    void glDrawElementsInstanced(GLenum mode,GLsizei count,GLenum type,const void* indices,GLsizei instances){if(!AuFilamentDraw(*this,mode,0,count,type,indices,instances))AuOpenGLBase::glDrawElementsInstanced(mode,count,type,indices,instances);}
+    void glBufferData(GLenum target,GLsizeiptr size,const void* data,GLenum usage){AuOpenGLBase::glBufferData(target,size,data,usage);AuFilamentBufferChanged(*this,target);}
+    void glBufferSubData(GLenum target,GLintptr offset,GLsizeiptr size,const void* data){AuOpenGLBase::glBufferSubData(target,offset,size,data);AuFilamentBufferChanged(*this,target);}
+    void glDeleteBuffers(GLsizei count,const GLuint* buffers){AuFilamentDeleted(*this,false,count,buffers);AuOpenGLBase::glDeleteBuffers(count,buffers);}
+    void glTexImage2D(GLenum target,GLint level,GLint internal,GLsizei width,GLsizei height,GLint border,GLenum format,GLenum type,const void* pixels){AuOpenGLBase::glTexImage2D(target,level,internal,width,height,border,format,type,pixels);if(level==0)AuFilamentTextureChanged(*this,target);}
+    void glTexSubImage2D(GLenum target,GLint level,GLint x,GLint y,GLsizei width,GLsizei height,GLenum format,GLenum type,const void* pixels){AuOpenGLBase::glTexSubImage2D(target,level,x,y,width,height,format,type,pixels);if(level==0)AuFilamentTextureChanged(*this,target);}
+    void glTexImage3D(GLenum target,GLint level,GLint internal,GLsizei width,GLsizei height,GLsizei depth,GLint border,GLenum format,GLenum type,const void* pixels){AuOpenGLBase::glTexImage3D(target,level,internal,width,height,depth,border,format,type,pixels);if(level==0)AuFilamentTextureChanged(*this,target);}
+    void glTexSubImage3D(GLenum target,GLint level,GLint x,GLint y,GLint z,GLsizei width,GLsizei height,GLsizei depth,GLenum format,GLenum type,const void* pixels){AuOpenGLBase::glTexSubImage3D(target,level,x,y,z,width,height,depth,format,type,pixels);if(level==0)AuFilamentTextureChanged(*this,target);}
+    void glDeleteTextures(GLsizei count,const GLuint* names){AuFilamentDeleted(*this,true,count,names);AuOpenGLBase::glDeleteTextures(count,names);}
+    void glClear(GLbitfield mask){AuFilamentClear(*this,mask);AuOpenGLBase::glClear(mask);}
+};
 
 #include "ausunshadow.h"
 

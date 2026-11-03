@@ -14,6 +14,55 @@
 #include "auglmodel.h"
 #include "austation.h"
 #include <QMap>
+#include <QCoreApplication>
+#include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+namespace {
+// Bind optional material detail per renderer/context and restore texture state
+// when the body pass ends. Body palettes, clothing masks and alpha stay intact.
+class ProceduralDetailBinding
+{
+    AuGLEffects& gl;
+    GLint active=GL_TEXTURE0,texture=0;
+    bool bound=false;
+public:
+    ProceduralDetailBinding(AuGLEffects& renderer,int skin,bool supported):gl(renderer)
+    {
+        QString root=qEnvironmentVariable("OPENSHORES_BODY_PARTS");
+        if(root.isEmpty())return;
+        GLint program=0;gl.glGetIntegerv(GL_CURRENT_PROGRAM,&program);
+        GLint enabled=gl.glGetUniformLocation(program,"surfaceDetailEnabled");
+        if(enabled<0)return;
+        if(!supported){gl.glUniform1i(enabled,0);return;}
+        gl.glGetIntegerv(GL_ACTIVE_TEXTURE,&active);gl.glActiveTexture(GL_TEXTURE2);
+        gl.glGetIntegerv(GL_TEXTURE_BINDING_2D,&texture);bound=true;
+        GLuint detail=gl.CreateTextureFromBitmap(STATIC_TEXTURE_ID,"ProceduralSurfaceDetail",
+            QDir(root).filePath("materials/skin-height.png"),GL_LINEAR,GL_LINEAR_MIPMAP_LINEAR,true);
+        gl.glActiveTexture(GL_TEXTURE2);gl.glBindTexture(GL_TEXTURE_2D,detail);
+        if(detail)
+        {
+            gl.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_MIRRORED_REPEAT);
+            gl.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_MIRRORED_REPEAT);
+        }
+        gl.glUniform1i(enabled,detail!=0);
+        gl.glUniform1i(gl.glGetUniformLocation(program,"surfaceDetail"),2);
+        gl.glUniform1i(gl.glGetUniformLocation(program,"surfaceKind"),skin);
+        if(qEnvironmentVariableIsSet("OPENSHORES_RENDER_AUDIT"))
+            qInfo().noquote()<<"VISUAL_MATERIAL"<<QJsonDocument(QJsonObject{
+                {"program",program},{"detailUniform",enabled},{"detailTexture",int(detail)},
+                {"skin",skin},{"path",QDir(root).filePath("materials/skin-height.png")}}).toJson(QJsonDocument::Compact);
+        gl.glActiveTexture(active);
+    }
+    ~ProceduralDetailBinding()
+    {
+        if(!bound)return;
+        GLint current=GL_TEXTURE0;gl.glGetIntegerv(GL_ACTIVE_TEXTURE,&current);
+        gl.glActiveTexture(GL_TEXTURE2);gl.glBindTexture(GL_TEXTURE_2D,texture);gl.glActiveTexture(current);
+    }
+};
+}
 
 //-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -1773,12 +1822,29 @@ void DpBody::OneTimeCalcs()
 
 // This function is called by the model maker thread when it is in use. This function must do all that it needs to make the
 // entire body model.
+AuMatrix4x4 DpBody::RenderBone(int index) const
+{
+    return m_Bones[index];
+}
+
+bool DpBody::UsesHumanPrototype() const
+{
+    return !m_Models.isEmpty() && m_Models.first()->FileName()=="HumanPrototypeHead";
+}
+
+GLuint DpBody::HumanPrototypeTexture(AuGLEffects& re) const
+{
+    return re.CreateTextureFromBitmap(STATIC_TEXTURE_ID,"HumanPrototypeDiffuse",
+        QDir(QCoreApplication::applicationDirPath()).filePath("human-prototype/human-diffuse.png"));
+}
+
 void DpBody::CreateSkin(AuGLEffects& re, AuGLModelCache& mc)
 {
 	SelectTextures(re);
 	SetupSkinMaterial();
 	for(QVector<DpBodyPart*>::const_iterator it = constBegin(); it != constEnd(); it++)
 		(*it)->CreateSkin(re, mc);
+
 
 	/*
 	// Make a simple box of quads.
@@ -1884,7 +1950,7 @@ bool DpBody::RenderSunShadowDepth(const AuMatrix4x4& model, AuGLEffects& re)
 	shader.SetModelView(model);
 
 	for(int bone=0; bone<DhDNA::BONE_Max && bone<MAX_BONES; bone++)
-		shader.SetBone(bone, m_Bones[bone]);
+		shader.SetBone(bone, RenderBone(bone));
 
 	for(QVector<Au3dsGLSLModelInstance*>::const_iterator mii = m_Models.constBegin(); mii != m_Models.constEnd(); mii++)
 		(*mii)->Render(re, false);
@@ -1995,11 +2061,14 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
 
 	re.GLSL().BodyShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyShader().SetModelView(model);
 
 	// Ambient light
@@ -2013,20 +2082,20 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -2034,64 +2103,64 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -2110,7 +2179,7 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 	{
 		re.GLSL().BodyShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyShader().SetClothesTexture(0);
-		re.GLSL().BodyShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -2189,7 +2258,7 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyShader().SetClothesTexture(0);
 			re.GLSL().BodyShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -2228,11 +2297,11 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 				re.GLSL().BodyShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -2272,7 +2341,7 @@ void DpBody::RenderSkin(const AuMatrix4x4& projection, const AuMatrix4x4& model,
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyShader().SetClothesTexture(0);
@@ -2393,12 +2462,15 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet,false,&globeP))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
 
 	// No fog, not a ringworld.
 	re.GLSL().BodyGlobeShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyGlobeShader().SetModelView(model);
 
 	// Ambient light
@@ -2413,20 +2485,20 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -2434,64 +2506,64 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyGlobeShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -2510,7 +2582,7 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 	{
 		re.GLSL().BodyGlobeShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyGlobeShader().SetClothesTexture(0);
-		re.GLSL().BodyGlobeShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -2589,7 +2661,7 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyGlobeShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyGlobeShader().SetClothesTexture(0);
 			re.GLSL().BodyGlobeShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -2629,11 +2701,11 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 				re.GLSL().BodyGlobeShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyGlobeShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyGlobeShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -2673,7 +2745,7 @@ void DpBody::RenderSkinGlobe(const AuMatrix4x4& projection, const AuMatrix4x4& m
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyGlobeShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyGlobeShader().SetClothesTexture(0);
@@ -2794,12 +2866,15 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet,false,nullptr,shadowPanelSunAngles))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
 
 	// No fog, on a ringworld.
 	re.GLSL().BodyRingworldShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyRingworldShader().SetModelView(model);
 
 	// Ambient light
@@ -2817,20 +2892,20 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -2838,64 +2913,64 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyRingworldShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -2915,7 +2990,7 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 	{
 		re.GLSL().BodyRingworldShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyRingworldShader().SetClothesTexture(0);
-		re.GLSL().BodyRingworldShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -2994,7 +3069,7 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyRingworldShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyRingworldShader().SetClothesTexture(0);
 			re.GLSL().BodyRingworldShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -3034,11 +3109,11 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 				re.GLSL().BodyRingworldShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyRingworldShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyRingworldShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -3078,7 +3153,7 @@ void DpBody::RenderSkinRingworld(const AuMatrix4x4& projection, const AuMatrix4x
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyRingworldShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyRingworldShader().SetClothesTexture(0);
@@ -3199,6 +3274,8 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet,true))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
@@ -3208,6 +3285,7 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 
 	// Fog, not a ringworld.
 	re.GLSL().BodyFogShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyFogShader().SetModelView(model);
 	re.GLSL().BodyFogShader().SetFog(fogDensity, fogR, fogG, fogB);
 
@@ -3222,20 +3300,20 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -3243,64 +3321,64 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyFogShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -3319,7 +3397,7 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 	{
 		re.GLSL().BodyFogShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyFogShader().SetClothesTexture(0);
-		re.GLSL().BodyFogShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyFogShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -3398,7 +3476,7 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyFogShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyFogShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyFogShader().SetClothesTexture(0);
 			re.GLSL().BodyFogShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -3437,11 +3515,11 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 				re.GLSL().BodyFogShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyFogShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyFogShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -3481,7 +3559,7 @@ void DpBody::RenderSkinFog(const AuMatrix4x4& projection, const AuMatrix4x4& mod
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyFogShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyFogShader().SetClothesTexture(0);
@@ -3602,6 +3680,8 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet,true,&globeP))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
@@ -3611,6 +3691,7 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 
 	// Fog, not a ringworld.
 	re.GLSL().BodyFogGlobeShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyFogGlobeShader().SetModelView(model);
 	re.GLSL().BodyFogGlobeShader().SetFog(fogDensity, fogR, fogG, fogB);
 
@@ -3626,20 +3707,20 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -3647,64 +3728,64 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyFogGlobeShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -3723,7 +3804,7 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 	{
 		re.GLSL().BodyFogGlobeShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyFogGlobeShader().SetClothesTexture(0);
-		re.GLSL().BodyFogGlobeShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyFogGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -3802,7 +3883,7 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyFogGlobeShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyFogGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyFogGlobeShader().SetClothesTexture(0);
 			re.GLSL().BodyFogGlobeShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -3842,11 +3923,11 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 				re.GLSL().BodyFogGlobeShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyFogGlobeShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyFogGlobeShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -3886,7 +3967,7 @@ void DpBody::RenderSkinFogGlobe(const AuMatrix4x4& projection, const AuMatrix4x4
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyFogGlobeShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogGlobeShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyFogGlobeShader().SetClothesTexture(0);
@@ -4007,6 +4088,8 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 		iCurHelmet = m_glTexHelmet[m_DNA.SkinType][iType];
 	}
 
+    if(RenderFilament(projection,model,re,headless,bHeadOnly,iCurSkin,iCurClothes,iCurArmor,iCurHelmet,true,nullptr,shadowPanelSunAngles))return;
+
 	// Configure shaders.
 	float ar, ag, ab, aa;
 	re.CurrentAmbientLight(ar, ag, ab, aa);
@@ -4016,6 +4099,7 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 
 	// Fog, on a ringworld.
 	re.GLSL().BodyFogRingworldShader().Select(projection, re);
+    ProceduralDetailBinding surfaceDetail(re,m_DNA.SkinType,!(HasBodyPowerArmorOn() || HasHelmetPowerArmorOn()));
 	re.GLSL().BodyFogRingworldShader().SetModelView(model);
 	re.GLSL().BodyFogRingworldShader().SetFog(fogDensity, fogR, fogG, fogB);
 
@@ -4034,20 +4118,20 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 		// For speed, we only send the bone matrices that we actually use.
 		// Torso
 		for(unsigned int ib=0; ib<m_DNA.TorsoVertebrae; ib++)
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Torso0 + ib, m_Bones[DhDNA::BONE_Torso0 + ib]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Torso0 + ib, RenderBone(DhDNA::BONE_Torso0 + ib));
 
 		// Head(s) and neck(s)
 		const int nvc = m_DNA.NeckVertebraeCount();
-		re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Head0, m_Bones[DhDNA::BONE_Head0]);
+		re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Head0, RenderBone(DhDNA::BONE_Head0));
 		//RenderBoneMatrix(DhDNA::BONE_Jaw0, vp, pname1, pname2, pname3);
 		for(int ib=0; ib<nvc; ib++)
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Neck00 + ib, m_Bones[DhDNA::BONE_Neck00 + ib]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Neck00 + ib, RenderBone(DhDNA::BONE_Neck00 + ib));
 		if(m_DNA.Heads)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Head1, m_Bones[DhDNA::BONE_Head1]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Head1, RenderBone(DhDNA::BONE_Head1));
 			//RenderBoneMatrix(DhDNA::BONE_Jaw1, vp, pname1, pname2, pname3);
 			for(int ib=0; ib<nvc; ib++)
-				re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Neck10 + ib, m_Bones[DhDNA::BONE_Neck10 + ib]);
+				re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Neck10 + ib, RenderBone(DhDNA::BONE_Neck10 + ib));
 		}
 
 		// Tail
@@ -4055,64 +4139,64 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 		if(tailverts)
 			tailverts--;
 		for(int ib=0; ib<=tailverts; ib++)
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Tail0 + ib, m_Bones[DhDNA::BONE_Tail0 + ib]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Tail0 + ib, RenderBone(DhDNA::BONE_Tail0 + ib));
 
 		// Arms
 		if(m_DNA.ArmPairs)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand0L, m_Bones[DhDNA::BONE_Hand0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand0R, m_Bones[DhDNA::BONE_Hand0R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm0L, m_Bones[DhDNA::BONE_ForeArm0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm0R, m_Bones[DhDNA::BONE_ForeArm0R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm0L, m_Bones[DhDNA::BONE_UpperArm0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm0R, m_Bones[DhDNA::BONE_UpperArm0R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand0L, RenderBone(DhDNA::BONE_Hand0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand0R, RenderBone(DhDNA::BONE_Hand0R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm0L, RenderBone(DhDNA::BONE_ForeArm0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm0R, RenderBone(DhDNA::BONE_ForeArm0R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm0L, RenderBone(DhDNA::BONE_UpperArm0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm0R, RenderBone(DhDNA::BONE_UpperArm0R));
 		}
 		if(m_DNA.ArmPairs >= 2)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand1L, m_Bones[DhDNA::BONE_Hand1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand1R, m_Bones[DhDNA::BONE_Hand1R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm1L, m_Bones[DhDNA::BONE_ForeArm1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm1R, m_Bones[DhDNA::BONE_ForeArm1R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm1L, m_Bones[DhDNA::BONE_UpperArm1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm1R, m_Bones[DhDNA::BONE_UpperArm1R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand1L, RenderBone(DhDNA::BONE_Hand1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand1R, RenderBone(DhDNA::BONE_Hand1R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm1L, RenderBone(DhDNA::BONE_ForeArm1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm1R, RenderBone(DhDNA::BONE_ForeArm1R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm1L, RenderBone(DhDNA::BONE_UpperArm1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm1R, RenderBone(DhDNA::BONE_UpperArm1R));
 		}
 		if(m_DNA.ArmPairs == 3)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand2L, m_Bones[DhDNA::BONE_Hand2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand2R, m_Bones[DhDNA::BONE_Hand2R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm2L, m_Bones[DhDNA::BONE_ForeArm2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm2R, m_Bones[DhDNA::BONE_ForeArm2R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm2L, m_Bones[DhDNA::BONE_UpperArm2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm2R, m_Bones[DhDNA::BONE_UpperArm2R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand2L, RenderBone(DhDNA::BONE_Hand2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Hand2R, RenderBone(DhDNA::BONE_Hand2R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm2L, RenderBone(DhDNA::BONE_ForeArm2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_ForeArm2R, RenderBone(DhDNA::BONE_ForeArm2R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm2L, RenderBone(DhDNA::BONE_UpperArm2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_UpperArm2R, RenderBone(DhDNA::BONE_UpperArm2R));
 		}
 
 		// Legs
 		if(m_DNA.LegPairs)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot0L, m_Bones[DhDNA::BONE_Foot0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot0R, m_Bones[DhDNA::BONE_Foot0R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf0L, m_Bones[DhDNA::BONE_Calf0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf0R, m_Bones[DhDNA::BONE_Calf0R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh0L, m_Bones[DhDNA::BONE_Thigh0L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh0R, m_Bones[DhDNA::BONE_Thigh0R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot0L, RenderBone(DhDNA::BONE_Foot0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot0R, RenderBone(DhDNA::BONE_Foot0R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf0L, RenderBone(DhDNA::BONE_Calf0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf0R, RenderBone(DhDNA::BONE_Calf0R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh0L, RenderBone(DhDNA::BONE_Thigh0L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh0R, RenderBone(DhDNA::BONE_Thigh0R));
 		}
 		if(m_DNA.LegPairs >= 2)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot1L, m_Bones[DhDNA::BONE_Foot1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot1R, m_Bones[DhDNA::BONE_Foot1R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf1L, m_Bones[DhDNA::BONE_Calf1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf1R, m_Bones[DhDNA::BONE_Calf1R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh1L, m_Bones[DhDNA::BONE_Thigh1L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh1R, m_Bones[DhDNA::BONE_Thigh1R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot1L, RenderBone(DhDNA::BONE_Foot1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot1R, RenderBone(DhDNA::BONE_Foot1R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf1L, RenderBone(DhDNA::BONE_Calf1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf1R, RenderBone(DhDNA::BONE_Calf1R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh1L, RenderBone(DhDNA::BONE_Thigh1L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh1R, RenderBone(DhDNA::BONE_Thigh1R));
 		}
 		if(m_DNA.LegPairs == 3)
 		{
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot2L, m_Bones[DhDNA::BONE_Foot2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot2R, m_Bones[DhDNA::BONE_Foot2R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf2L, m_Bones[DhDNA::BONE_Calf2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf2R, m_Bones[DhDNA::BONE_Calf2R]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh2L, m_Bones[DhDNA::BONE_Thigh2L]);
-			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh2R, m_Bones[DhDNA::BONE_Thigh2R]);
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot2L, RenderBone(DhDNA::BONE_Foot2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Foot2R, RenderBone(DhDNA::BONE_Foot2R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf2L, RenderBone(DhDNA::BONE_Calf2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Calf2R, RenderBone(DhDNA::BONE_Calf2R));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh2L, RenderBone(DhDNA::BONE_Thigh2L));
+			re.GLSL().BodyFogRingworldShader().SetBone(DhDNA::BONE_Thigh2R, RenderBone(DhDNA::BONE_Thigh2R));
 		}
 	}
 
@@ -4132,7 +4216,7 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 	{
 		re.GLSL().BodyFogRingworldShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 		re.GLSL().BodyFogRingworldShader().SetClothesTexture(0);
-		re.GLSL().BodyFogRingworldShader().SetSkinTexture(iCurSkin);
+		re.GLSL().BodyFogRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 	}
 
 	if(bHeadOnly)
@@ -4211,7 +4295,7 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 		if(mTail || mTip || mWingL || mWingR)
 		{
 			// Tail is always skin, not armored.
-			re.GLSL().BodyFogRingworldShader().SetSkinTexture(iCurSkin);
+			re.GLSL().BodyFogRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 			re.GLSL().BodyFogRingworldShader().SetClothesTexture(0);
 			re.GLSL().BodyFogRingworldShader().SetClothesTextureOffsetWear(0, 0, 0);	// Skin only
 			if(mTail)
@@ -4251,11 +4335,11 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 				re.GLSL().BodyFogRingworldShader().SetClothesTexture(iCurArmor);
 				re.GLSL().BodyFogRingworldShader().SetClothesTextureOffsetWear(0, 0, 1);	// Clothes only
 			}
-			else if(iCurClothes && m_eBodyClothesType != CID_Invalid)
+			else if(!UsesHumanPrototype() && iCurClothes && m_eBodyClothesType != CID_Invalid)
 			{
 				// Body is wearing clothing.
 				// Skin offset.
-				re.GLSL().BodyFogRingworldShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				float clothesOffX;
@@ -4295,7 +4379,7 @@ void DpBody::RenderSkinFogRingworld(const AuMatrix4x4& projection, const AuMatri
 			{
 				// Body is naked.
 				// Skin offset.
-				re.GLSL().BodyFogRingworldShader().SetSkinTexture(iCurSkin);
+				re.GLSL().BodyFogRingworldShader().SetSkinTexture(UsesHumanPrototype() ? HumanPrototypeTexture(re) : iCurSkin);
 
 				// Clothes offset
 				re.GLSL().BodyFogRingworldShader().SetClothesTexture(0);

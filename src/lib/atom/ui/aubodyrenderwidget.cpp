@@ -239,6 +239,7 @@ void AuBodyRenderWidget::paintGL()
 		projection.Perspective(45.0*DEG2RAD, 1, 2, 100000);
 
 	m_pRE->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    AuFilamentWorldScope filamentPreview(*m_pRE,projection);
 
 	m_pRE->glFrontFace(GL_CW);			// Front faces are those drawn clockwise.
 	m_pRE->glCullFace(GL_BACK);		// Cull back-facing faces.

@@ -1775,6 +1775,14 @@ public:
 class Au3dsGLSLModelInstance : private Au3dsGLSLModel, public AuGLModelInstance
 {
 public:
+    ~Au3dsGLSLModelInstance() override;
+    // CPU reference mesh for asset fitting and skin-weight transfer tools.
+    void AppendBodyTriangles(Au3dsGLSLTriBodyList& triangles);
+    bool CreatePrototypeBody(AuOpenGLFunctions& GLf, const QString& path, const QString& section);
+    AuMatrix4x4 PrototypeBone(int index, const AuMatrix4x4& animated) const;
+private:
+    QVector<AuMatrix4x4> m_PrototypeInverseBind;
+public:
 	/*
 	inline Au3dsGLSLModelInstance()
 	{
@@ -2180,18 +2188,7 @@ public:
 	}
 
 	// OpenGL context must be current when this is called.
-	virtual void DeleteGL()
-	{
-		for(QList<Au3dsGLSLVAO>::iterator vi = m_Models.begin(); vi != m_Models.end(); vi++)
-			if((*vi).VAO())
-				(*vi).DeleteGL();
-		m_Models.clear();
-
-		for(QList<Au3dsGLSLVAO>::iterator vi = m_ModelsLit.begin(); vi != m_ModelsLit.end(); vi++)
-			if((*vi).VAO())
-				(*vi).DeleteGL();
-		m_ModelsLit.clear();
-	}
+    void DeleteGL() override;
 
 	virtual const QString& FileName() const
 	{

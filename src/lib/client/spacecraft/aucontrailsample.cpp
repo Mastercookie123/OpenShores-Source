@@ -106,6 +106,7 @@ void AuContrailSample::paintGL()
 		projection.Perspective(45.0*DEG2RAD, 1, 2, 1000000);
 
 	// Setup model projection into eye space.
+    AuFilamentWorldScope filamentPreview(m_RE,projection);
 	AuMatrix4x4 model;
 	model.Translate(4, 0, -5);			// Move 5 units out in front of the eye plane, past the near clip disance of 2.
 

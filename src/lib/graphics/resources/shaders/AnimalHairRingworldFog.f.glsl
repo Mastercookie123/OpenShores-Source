@@ -34,13 +34,22 @@ in vec4									vertColor;				// Incoming fragment color interpolated from the v
 
 out vec4								fragColor;				// Outgoing fragment color.
 
+#CharacterSurface
+
 void main()
 {
 	vec4 texCol = texture(texHair, texCoord);
 	//if(texCol.a < .1)
 		//discard;
 #ifdef PER_PIXEL_LIGHTING
-	vec4 vertColor = vec4(computeLighting(light, vertLitShininess, vertLitReflectiveness * PER_PIXEL_HAIR_GLOSS, vertLitP, normalize(vertLitN)), 1) * vertLitScale;
+    vec3 surfaceNormal = normalize(vertLitN);
+    float surfaceGloss = PER_PIXEL_HAIR_GLOSS;
+#ifdef CHARACTER_SURFACE_ENABLED
+    surfaceNormal = characterHairNormal(surfaceNormal, vertLitP, texCoord);
+    surfaceGloss *= .45;
+    texCol.rgb *= characterHairDetail(texCoord);
+#endif
+    vec4 vertColor = vec4(computeLighting(light, vertLitShininess, vertLitReflectiveness * surfaceGloss, vertLitP, surfaceNormal), 1) * vertLitScale;
 	vertColor.rgb = min(vertColor.rgb + glowAlpha.rgb, vec3(1.5, 1.5, 1.5));
 #endif
 	fragColor = texCol * hairColor * vertColor;
