@@ -23,6 +23,8 @@
 #include "augleffects.h"
 #include "aubodysurface.h"
 #include <signal.h>
+#include "modern_ui.h"
+#include "client_smoke.h"
 
 void SignalHandler(int value)
 {
@@ -48,6 +50,18 @@ int main(int argc, char** argv)
 
 		// Change my current directory.
 		QDir::setCurrent(dir.absolutePath());
+
+        QString smokeDir;
+        for(int i=1;i<argc;i++)if(QString::fromLocal8Bit(argv[i])=="-client-smoke-dir"&&i+1<argc)smokeDir=QDir(QString::fromLocal8Bit(argv[++i])).absolutePath();
+        if(!smokeDir.isEmpty()){
+            bool ini=false;for(int i=1;i<argc;i++)ini|=QString::fromLocal8Bit(argv[i])=="-ini";
+            if(!ini){std::cerr<<"Client smoke requires -ini for profile isolation\n";return 24;}
+            QDir().mkpath(smokeDir+"/settings");
+            QSettings::setPath(QSettings::IniFormat,QSettings::UserScope,smokeDir+"/settings");
+            QSettings testSettings(QSettings::IniFormat,QSettings::UserScope,"OpenShores","OpenShores");testSettings.setFallbacksEnabled(false);
+            testSettings.setValue("Camera/1stPersonViewPref",false);testSettings.setValue("/Settings/BaseDir",smokeDir+"/profile");testSettings.setValue("/Settings/CacheDir",smokeDir+"/profile/cache");testSettings.setValue("/Settings/GameSaveDir",smokeDir+"/profile/saves");testSettings.sync();
+            qputenv("OPENSHORES_CLIENT_SMOKE","1");qputenv("OPENSHORES_FILAMENT_STATUS_PATH",(smokeDir+"/renderer-status.json").toUtf8());
+        }
 
 		QStringList libPaths;
 #if defined(Q_OS_MACOS)
@@ -162,9 +176,14 @@ int main(int argc, char** argv)
 			exit(0);
 		}
 
-		// Create the main frame window.
+		bool modernUi=!a.arguments().contains("-ui-classic");
+        if(modernUi)ModernGameUi::applyTheme();
+
+        // Create the main frame window.
 		AuClientFrame cw;
 		a.SetFrame(&cw);
+        if(modernUi)new ModernGameUi(cw);
+        if(!smokeDir.isEmpty()){cw.setAttribute(Qt::WA_ShowWithoutActivating);cw.resize(1280,800);}
 		cw.showNormal();
         if(qgetenv("OPENSHORES_RENDERER")=="filament")
             cw.setWindowTitle(cw.windowTitle()+" - Filament R2 (lamp shadows)");
@@ -178,6 +197,7 @@ int main(int argc, char** argv)
         }
 
 		// Start chuggin'.
+        if(!smokeDir.isEmpty()){cw.setWindowTitle("OpenShores - Unattended Client Test");QTimer::singleShot(0,&cw,[&cw]{cw.hide();cw.showNormal();});new ClientSmoke(a,cw,smokeDir);}
 		returnValue = a.exec();
 	}
 

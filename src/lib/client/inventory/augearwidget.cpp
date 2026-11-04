@@ -26,6 +26,11 @@
 #include <QHeaderView>
 #include <QMenu>
 #include <QTimer>
+#include <QLabel>
+#include <functional>
+#include "auinventorygrid.h"
+#include <QTabWidget>
+#include <memory>
 
 //static unsigned int s_ShowSpecies = 0;							// Last count of species listed as debug output.
 
@@ -672,6 +677,7 @@ AuGearWidget::AuGearWidget(QWidget* parent) : QWidget(parent)
 
 	// Controls to display gear and other info.
 	m_GearTree = new AuGearTree(this);
+    m_GearTree->setObjectName("InventoryTree");
 	m_GearTree->setModel(&m_GearModel);
 	m_GearTree->setToolTip(tr("<html><b>Gear</b><br>"
 				"Gear carried or worn by you.<br>"
@@ -884,16 +890,58 @@ AuGearWidget::AuGearWidget(QWidget* parent) : QWidget(parent)
 
 	QGridLayout* lay = new QGridLayout();
 	int row=0;
-	lay->addWidget(m_Account, row,0, 1,2);
+	if(qApp->property("modernUi").toBool()){auto* label=new QLabel(tr("AVAILABLE FUNDS"),this);label->setStyleSheet("color:#9fafc5;font-size:10px;letter-spacing:1px;");lay->addWidget(label,row++,0,1,2);}
+    lay->addWidget(m_Account, row,0, 1,2);
 	row++;
-	lay->addWidget(m_Armor, row,0, 1,1);
+	if(qApp->property("modernUi").toBool()){auto* a=new QLabel(tr("ARMOR"),this);auto* b=new QLabel(tr("LOAD / CAPACITY"),this);for(auto* label:{a,b})label->setStyleSheet("color:#9fafc5;font-size:10px;letter-spacing:1px;");lay->addWidget(a,row,0);lay->addWidget(b,row++,1);}
+    lay->addWidget(m_Armor, row,0, 1,1);
 	lay->addWidget(m_Burden, row,1, 1,1);
 	row++;
 	lay->addLayout(blay, row,0, 1,2);
 	row++;
-	lay->addWidget(m_GearTree, row,0, 1,2);
-	lay->setMargin(2);
-	lay->setSpacing(2);
+	if(qApp->property("modernUi").toBool()){
+        auto* search=new QLineEdit(this);search->setObjectName("InventorySearch");search->setPlaceholderText(tr("Find an item by name..."));search->setAccessibleName(tr("Search inventory"));search->setClearButtonEnabled(true);lay->addWidget(search,row++,0,1,2);
+        auto* summary=new QLabel(this);summary->setObjectName("InventorySummary");summary->setWordWrap(true);lay->addWidget(summary,row++,0,1,2);
+        auto apply=[this,search,summary]{
+            const QString text=search->text().trimmed();int total=0,matched=0;
+            std::function<bool(const QModelIndex&)> visit=[&](const QModelIndex& parent){bool any=false;for(int r=0;r<m_GearModel.rowCount(parent);r++){auto index=m_GearModel.index(r,0,parent);++total;bool child=visit(index);bool match=text.isEmpty()||index.data().toString().contains(text,Qt::CaseInsensitive);if(match)++matched;bool visible=match||child;m_GearTree->setRowHidden(r,parent,!visible);if(!text.isEmpty()&&child)m_GearTree->expand(index);any|=visible;}return any;};visit(QModelIndex());
+            if(!total)summary->setText(tr("Your inventory is empty. Forage or craft to get started."));
+            else if(!text.isEmpty()&&!matched)summary->setText(tr("No items match. Clear search to see your equipment."));
+            else if(text.isEmpty())summary->setText(tr("%1 items · Select one to see its actions.").arg(total));
+            else summary->setText((matched==1?tr("1 match"):tr("%1 matches").arg(matched))+tr(" · %1 items total").arg(total));
+            summary->setStyleSheet(!text.isEmpty()&&!matched?"color:#dfbd7a;font-size:11px;padding:4px;":"color:#a2b4cd;font-size:11px;padding:4px;");
+        };
+        connect(search,&QLineEdit::textChanged,this,[this,apply]{m_GearTree->clearSelection();apply();});
+        connect(&m_GearModel,&QAbstractItemModel::rowsInserted,this,[apply](const QModelIndex&,int,int){apply();});
+        connect(&m_GearModel,&QAbstractItemModel::rowsRemoved,this,[apply](const QModelIndex&,int,int){apply();});
+        connect(&m_GearModel,&QAbstractItemModel::dataChanged,this,[apply](const QModelIndex&,const QModelIndex&,const QVector<int>&){apply();});
+        apply();
+        m_GearTree->setAlternatingRowColors(true);m_GearTree->setIconSize(QSize(48,48));
+        for(auto* button:{m_HandCraft,m_Inspect,m_Drop,m_SlotHand}){button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);button->setMinimumHeight(30);}
+        m_HandCraft->setText(tr("Craft"));m_Inspect->setText(tr("Inspect"));m_Drop->setText(tr("Drop"));m_SlotHand->setText(tr("Hold"));
+        lay->setContentsMargins(10,10,10,10);lay->setSpacing(8);
+    }
+    if(qApp->property("modernUi").toBool()){
+        auto* tabs=new QTabWidget(this);tabs->setObjectName("InventoryViews");auto* grid=new AuInventoryGrid(m_Gear,this);
+        tabs->addTab(grid,tr("Grid"));tabs->addTab(m_GearTree,tr("List"));lay->addWidget(tabs,row,0,1,2);lay->setRowStretch(row,1);
+        auto select=[this](const AuGearPos& pos){
+            std::function<QModelIndex(const QModelIndex&)> find=[&](const QModelIndex& parent)->QModelIndex{for(int r=0;r<m_GearModel.rowCount(parent);r++){auto idx=m_GearModel.index(r,0,parent);if(idx.data(Qt::UserRole+1).value<AuGearPos>()==pos)return idx;auto child=find(idx);if(child.isValid())return child;}return QModelIndex();};
+            auto idx=find(QModelIndex());if(idx.isValid()){m_GearTree->setCurrentIndex(idx);m_SelPos=pos;EnableControls();}
+        };
+        grid->onSelect=select;grid->onContext=[this,select](const AuGearPos& pos){select(pos);GearTreeRightClicked();};
+        grid->onTransfer=[this,grid](const AuGearPos& from,const AuGearPos& to){
+            const auto* source=m_Gear.ItemAt(from);const auto* target=m_Gear.ItemAt(to);if(!source||!target||from==to)return;
+            auto path=to.ContentPath(),prefix=from.ContentPath();bool descendant=to.Slot()==from.Slot()&&to.Which()==from.Which()&&path.size()>=prefix.size();for(int i=0;i<prefix.size()&&descendant;i++)descendant=path[i]==prefix[i];
+            std::unique_ptr<AuItem> trial(target->Clone());
+            if(descendant||!trial->FitItemIntoContainer(*source)){grid->findChild<QLabel*>("ContainerFullness")->setText(tr("That item cannot fit here. Check free space and container restrictions."));return;}
+            emit MoveGearItemToItem(from,to);
+        };
+        auto* pending=new QTimer(grid);pending->setSingleShot(true);connect(pending,&QTimer::timeout,grid,[grid]{grid->refresh();});
+        auto refresh=[pending]{pending->start(0);};connect(&m_GearModel,&QAbstractItemModel::rowsInserted,grid,refresh);connect(&m_GearModel,&QAbstractItemModel::rowsRemoved,grid,refresh);connect(&m_GearModel,&QAbstractItemModel::dataChanged,grid,refresh);connect(&m_GearModel,&QAbstractItemModel::modelReset,grid,refresh);
+        if(auto* search=findChild<QLineEdit*>("InventorySearch"))connect(search,&QLineEdit::textChanged,grid,[grid](const QString& text){grid->setSearch(text);});grid->refresh();
+    }else lay->addWidget(m_GearTree, row,0, 1,2);
+	lay->setMargin(qApp->property("modernUi").toBool()?10:2);
+	lay->setSpacing(qApp->property("modernUi").toBool()?8:2);
 	setLayout(lay);
 }
 

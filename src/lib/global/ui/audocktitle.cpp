@@ -20,7 +20,7 @@
 #include <QToolButton>
 
 AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
-{	
+{
 	setCursor(Qt::OpenHandCursor);
 
     m_FloatButton = new QToolButton(this);
@@ -53,37 +53,37 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
 				"Opens a relevant topic in the <i>%1</i> wiki. "
 				"</html>").arg(g_Au.ApplicationName()));
     connect(m_HelpButton, SIGNAL(clicked()), this, SLOT(ShowHelp()));
-    
+
     m_Icon = new QToolButton(this);
     m_Icon->setBackgroundRole(QPalette::Text);
 	m_Icon->setAutoRaise(true);
 	m_Icon->setCursor(QCursor(Qt::ArrowCursor));
     m_Icon->setFocusPolicy ( Qt::NoFocus );
     connect(m_Icon, SIGNAL(clicked()), this, SLOT(showIconMenu()));
-    
+
     m_label = new QLabel(this);
     //the default window title
     m_label->setText(tr("Default Window Title"));
     //parent->setWindowTitle(tr("Default Window Title"));
 	m_label->setTextInteractionFlags(Qt::NoTextInteraction);
-  
+
   	//titlebar layout
     m_hbox_TitleBar = new QHBoxLayout(this);
-    
+
     //titlebar icon
     m_hbox_TitleBar->addWidget(m_Icon);
-    
+
     //titlebar text
     m_hbox_TitleBar->addWidget(m_label);
 
 	m_hbox_TitleBar->addStretch(1);
-    
+
     m_hbox_TitleBar->addWidget(m_HelpButton);
-    
+
     //min max close buttons
     m_hbox_TitleBar->addWidget(m_FloatButton);
     m_hbox_TitleBar->addWidget(m_CloseButton);
-    
+
 	setLayout(m_hbox_TitleBar);
 
     //system menu
@@ -107,7 +107,7 @@ void AuDockTitle::contextMenuEvent(QContextMenuEvent *e)
 void AuDockTitle::createSysMenu(QPoint point)
 {
 	QMenu systemMenu(this);
- 
+
 	Q_ASSERT(m_FloatButton);
 	Q_ASSERT(m_CloseButton);
    	if(!m_HelpButton->isHidden())
@@ -116,14 +116,14 @@ void AuDockTitle::createSysMenu(QPoint point)
    		systemMenu.addAction(m_FloatAction);
    	if(!m_CloseButton->isHidden())
    		systemMenu.addAction(m_CloseAction);
-   
+
     systemMenu.exec(point);
 }
 
 void AuDockTitle::createActions()
 {
 	QIcon theMaxIcon(":data/hazBlackFloat.png");
-	m_FloatAction = new QAction(theMaxIcon, tr("Dock/Float"), this);	 
+	m_FloatAction = new QAction(theMaxIcon, tr("Dock/Float"), this);
 	//minAct->setShortcut(tr("Ctrl+N"));
 	//minAct->setStatusTip(tr(""));
 	m_FloatAction->setToolTip(tr("<html>Dock/Float<br>"
@@ -150,7 +150,8 @@ void AuDockTitle::createActions()
 // paint event for title bar main wiget
 void AuDockTitle::paintEvent(QPaintEvent* pe)
 {
-    QPainter painter(this); 
+    QPainter painter(this);
+    if(qApp->property("modernUi").toBool()){painter.fillRect(rect(),QColor("#1a2e49"));painter.setPen(QColor("#64728a"));painter.drawLine(0,height()-1,width(),height()-1);return;}
 	painter.setRenderHint(QPainter::Antialiasing, true);
 
     // Draw border
@@ -162,9 +163,9 @@ void AuDockTitle::paintEvent(QPaintEvent* pe)
 		QImage scaledImage = image.scaled(size, Qt::IgnoreAspectRatio);
     	painter.drawImage(QPoint(0,0), scaledImage);
 	}
-		
+
 	painter.setPen(QPen(QColor(93,135,221,255), 2));
-	painter.drawRect(rect());      
+	painter.drawRect(rect());
 	QWidget::paintEvent(pe);
 }
 
@@ -293,4 +294,3 @@ void AuDockTitle::ShowHelp()
 	if(url != QUrl())
 		QDesktopServices::openUrl(url);
 }
-

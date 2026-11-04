@@ -929,7 +929,7 @@ void DaPerson::RxUpdate(QDataStream& fromServer, bool isFirstUpdate)
 		fromServer >> m_SpawnShipIsPrivate;
 		fromServer >> m_SpawnShipName;
 	}
-	
+
 	if(hasWhat & 0x02)
 		m_HitNotify << fromServer;
 
@@ -966,12 +966,12 @@ void DaPerson::RxUpdate(QDataStream& fromServer, bool isFirstUpdate)
 		hasMore2 = 0;
 		m_AgentBits = 0;
 	}
-	
+
 	//qDebug() << "DaPerson::RxUpdate" << Id() << Name()
 		//<< QString("hasWhat 0x%1").arg(hasWhat,0,16)
 		//<< QString("hasMore 0x%1").arg(hasMore,0,16)
 		//<< QString("hasMore2 0x%1").arg(hasMore,0,16);
-	
+
 	if(hasWhat & 0x10)
 	{
 		quint8 ui8;
@@ -1906,8 +1906,10 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 		left = -xmax;			// Put health info on the left for righties.
 	float bottom = -ymax;
 
+	// Native status cards replace only the player's duplicated vitals.
+	const bool modernVitals = ari.glw->property("modernVitals").toBool();
 	// Black backdrop to the bars.
-	{
+	if(!modernVitals) {
 		GLuint texBarBack = AuTextureLibItem::LibraryTexture(*ari.re, AuTextureLibItem::LibraryTextureStatsBody());
 		float bw = barWid + .02f;
 		float bh = barHt*3 + barSpacing*4 +jumpSpringHt +moveSpringHt +.02f;
@@ -1921,7 +1923,7 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 	}
 
 	// Space for the two bars of information from DaCreature, plus spacing between them.
-	RenderBodyStats(left, bottom + barHt + barSpacing, barWid, barHt*2 + barSpacing, false, 0, POL_Empire, ari, this, tDevPersp,
+	if(!modernVitals) RenderBodyStats(left, bottom + barHt + barSpacing, barWid, barHt*2 + barSpacing, false, 0, POL_Empire, ari, this, tDevPersp,
 			tDevOrtho, hudIntensity);
 
 	// Parent atom sometimes wants to render health. e.g. creature, vehicle. It is usually two bars tall.
@@ -1936,7 +1938,7 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 	}
 
 	// Hunger is at the bottom.
-	{
+	if(!modernVitals) {
 		float valbot = bottom;
 		float curval = CurrentHunger();
 		float maxval = MaxHunger();
@@ -1978,7 +1980,8 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 			curval = 16;
 		float fracval = curval/maxval;
 		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-		ari.RenderJumpSpring(left,valbot, barWid,jumpSpringHt, fracval, .5f,.5f,.5f,1);
+		if(modernVitals)ari.glw->setProperty("hudJumpPower",fracval);
+		else ari.RenderJumpSpring(left,valbot, barWid,jumpSpringHt, fracval, .5f,.5f,.5f,1);
 		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
@@ -1994,7 +1997,8 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 			curval = 16;
 		float fracval = curval/maxval;
 		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-		ari.RenderMovePower(left,valbot, barWid,jumpSpringHt, fracval, .5f,.5f,.5f,1);
+		if(modernVitals)ari.glw->setProperty("hudMovePower",fracval);
+		else ari.RenderMovePower(left,valbot, barWid,jumpSpringHt, fracval, .5f,.5f,.5f,1);
 		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
@@ -2813,7 +2817,7 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 				rounds = curItem->AmmoLoaded(currentItemSub);	// get rounds count
 				ammoqty = curItem->AmmoQuantity(currentItemSub);
 				if(ammoqty)
-					pctleft = (float)rounds / (float)ammoqty;				
+					pctleft = (float)rounds / (float)ammoqty;
 			}
 
 			if(rounds >= 0)
@@ -2942,7 +2946,7 @@ void DaPerson::RenderScene(const AuMatrix4x4& projection, const AuMatrix4x4& far
 	float indYPos = -ymax + barSpacing + bodyHt;
 
 	// Render mini me at lower corner of the display.
-	if(g_Au.DrawMiniMe())
+	if(g_Au.DrawMiniMe()&&!modernVitals)
 	{
 		ari.re->glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -5722,7 +5726,7 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 				break;
 			if(cc == CONTROL_Client || cc == CONTROL_Solo)
 			{
-				// "firing" a flag at the terrain tries to claim the world. On the client, this can trigger the display of a UI to 
+				// "firing" a flag at the terrain tries to claim the world. On the client, this can trigger the display of a UI to
 				// create a new empire.
 				if(!EmpireId() && !nuPose.IsTurret() && !InDesignEnvironment())
 				{
@@ -6070,7 +6074,7 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 							AttackTarget(attacker, defender, weapon, true, result);
 						}
 					}
-					
+
 					// Notify body the special weapon was used so we can't use it again until its ready.
 					if(gearPos.IsBody() && isub != IPS_Item)
 						UseSpecialWeapon();
@@ -6908,7 +6912,7 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 	// it must change its pose to standing, which affects its insertion point.
 	if(curPose == nuPose && !poseWho->IsEatingPose())
 		return;
-	
+
 	// Body pose is not changed while dying.
 	if(poseWho->IsBodyDyingOrDead())
 		return;
@@ -7645,7 +7649,7 @@ void DaPerson::Tock(const AuTime& last, const AuTime& now, const AuScripts& scri
 		// Decay on-line status.
 		// The on-line status is refreshed regularly by the scene server thread, which includes the time the status was refreshed.
 		// After the scene server stops refreshing my on-line status, I'll turn off the 'on line' flag.
-		// This prevents people from simply vanishing from the scene by logging off. 
+		// This prevents people from simply vanishing from the scene by logging off.
 		// After exiting they'll linger in the universe for a while before disappearing.
 		m_OnLineLock.lockForRead();
 		bool o = m_tmLastOnLine.ElapsedSec() > c_SecsToOffLine;
@@ -7865,7 +7869,7 @@ void DaPerson::Tock(const AuTime& last, const AuTime& now, const AuScripts& scri
 		ResetStamina();
 	}
 
-	int lastmin = last.MinsSinceEpoch();	
+	int lastmin = last.MinsSinceEpoch();
 	int curmin = now.MinsSinceEpoch();
 
 	// Only tick stories and apply the affects of hunger while on line and thus not AI controlled.
@@ -11628,7 +11632,7 @@ void DaPerson::CombatApplyDamage(const AuCombatAttacker& attacker, const AuComba
 				Stats().SunBurn(parentStar, 0);	// Killed by solar radiation or spaghettification. Stats record them the same.
 		}
 	}
-	
+
 	AuPoint fromDir = wpnLoc - hitLoc;
 	if(!fromDir.IsFuzzyZero())
 		fromDir.Unit();
@@ -11958,7 +11962,7 @@ void DaPerson::SelectNextItem()
 		//qDebug("DaPerson::SelectNextItem no valid items to select");
 		return;	// Nothing to select if there are no valid items.
 	}
-	
+
 	// Select next current valid item index.
 	int nucurrent;
 	if(current < 0 || current >= validItems.count()-1)
@@ -12043,7 +12047,7 @@ void DaPerson::SelectPreviousItem()
 		//qDebug("DaPerson::SelectPreviousItem no valid items to select");
 		return;	// Nothing to select if there are no valid items.
 	}
-	
+
 	// Select next current valid item index.
 	int nucurrent;
 	if(current < 1 || current >= validItems.count())
@@ -14914,7 +14918,7 @@ void DaPerson::operator>>(QDataStream& out) const
 
 	m_GearLock.lockForRead();
 	out << m_Gear;
-	out << AuTime();	//m_tmGearChange;	
+	out << AuTime();	//m_tmGearChange;
 	out << m_WeightCarried;
 	m_GearLock.unlock();
 
@@ -14953,7 +14957,7 @@ void DaPerson::operator>>(QDataStream& out) const
 
 	m_SeaChestLock.lockForRead();
 	out << m_SeaChest;
-	out << AuTime();	//m_tmSeaChestChange;	
+	out << AuTime();	//m_tmSeaChestChange;
 	m_SeaChestLock.unlock();
 }
 
@@ -15072,7 +15076,7 @@ void DaPerson::operator<<(QDataStream& in)
 	m_GearLock.lockForWrite();
 	in >> m_Gear;
 	AuTime tmGearChange;
-	in >> tmGearChange;	
+	in >> tmGearChange;
 	in >> m_WeightCarried;
 	m_GearLock.unlock();
 
@@ -15129,7 +15133,7 @@ void DaPerson::operator<<(QDataStream& in)
 		in >> s;
 	}
 	AuTime tmSeaChestChange;
-	in >> tmSeaChestChange;	
+	in >> tmSeaChestChange;
 	m_SeaChestLock.unlock();
 }
 
@@ -17738,7 +17742,7 @@ void DaPerson::ArenaExit()
 
 	// Put this atom subordinate to the parent of the arena.
 	ForcePosMove(AuAtomPos(pde->ParentId(), pde->Transform()), AuPoint(0,0));
-	
+
 	// Restore my health.
 	ResetHitPoints();				// Person "gets well" before exiting arena.
 
@@ -18061,7 +18065,7 @@ void DaPerson::Forage(quint8 quality, COMMODITYID cid, const AuFloraDNA& dna, qu
 			Thought(text);
 			return;
 		}
-		
+
 		delete item;
 	}
 
@@ -19979,7 +19983,7 @@ void DaPerson::InitNewAvatar(DaWorldLL* llworld)
 	AuMatrix4x4 tBody;
 	tBody.Translate(loc);
 	tBody *= AuPoint(0,0,1).GetAlignmentTransform(upVec);
-	tBody.Translate(0, 0, GroundHeightAboveCG()); 
+	tBody.Translate(0, 0, GroundHeightAboveCG());
 	SetPosAndOrient(AuAtomPos(llworld->Id(), tBody));
 	ether->AddAtom(this);
 
@@ -20020,7 +20024,7 @@ bool DaPerson::InitNewAvatarAboardShip(DaVessel* ves)
 	AuMatrix4x4 tBody;
 	tBody.Translate(spawnLoc);
 	tBody *= AuPoint(0,0,1).GetAlignmentTransform(upVec);
-	tBody.Translate(0, 0, GroundHeightAboveCG()); 
+	tBody.Translate(0, 0, GroundHeightAboveCG());
 	SetPosAndOrient(AuAtomPos(ves->Id(), tBody));
 	ether->AddAtom(this);
 
@@ -20065,7 +20069,7 @@ bool DaPerson::InitNewAvatarAtCity(AuEther& ether, const AuId& bdId)
 	AuMatrix4x4 tBody;
 	tBody.Translate(spawnLoc);
 	tBody *= AuPoint(0,0,1).GetAlignmentTransform(upVec);
-	tBody.Translate(0, 0, GroundHeightAboveCG()); 
+	tBody.Translate(0, 0, GroundHeightAboveCG());
 	SetPosAndOrient(AuAtomPos(spawnParent, tBody));
 	ether.AddAtom(this);
 
@@ -22236,7 +22240,7 @@ void DaPerson::InitPreview(quint8 previewType)
 	AuMatrix4x4 tBody;
 	tBody.Translate(loc);
 	tBody *= AuPoint(0,0,1).GetAlignmentTransform(upVec);
-	tBody.Translate(0, 0, GroundHeightAboveCG()); 
+	tBody.Translate(0, 0, GroundHeightAboveCG());
 	ForcePosStop(AuAtomPos(parentId, tBody));
 	Stand();
 	SyncController(AuSyncPose(AuPose::Stand, 0, 0, 0));
@@ -22746,7 +22750,7 @@ void DaPerson::RenderHelmetHUDRadar(AuAtomRenderInfo& ari, bool leftOriented)
 	pmv.Scale(1/screenRange*windowAspect * radarScale, 1/screenRange * radarScale, 1);
 
 	ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	ari.re->glEnable(GL_PROGRAM_POINT_SIZE); 
+	ari.re->glEnable(GL_PROGRAM_POINT_SIZE);
 	ari.re->GLSL().SpriteActualSizeShader().Select();
 	ari.re->GLSL().SpriteActualSizeShader().SetProjectionModelView(pmv);
 	if(foundBdCiv)
@@ -23127,7 +23131,7 @@ void DaPerson::RenderHelmetHUDRadar(AuAtomRenderInfo& ari, bool leftOriented)
 	}
 
 	ari.re->GLSL().SpriteActualSizeShader().Deselect();
-	ari.re->glDisable(GL_PROGRAM_POINT_SIZE); 
+	ari.re->glDisable(GL_PROGRAM_POINT_SIZE);
 	ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
@@ -23486,7 +23490,7 @@ void DaPerson::ClaimTitleRecursive(const AuId& propertyId, const QString& proper
 	if(m_Gear.VoidOwnershipTitle(propertyId, ownerId, ownerName))
 	{
 		gear = true;
-		m_tmGearChange.Set();	
+		m_tmGearChange.Set();
 	}
 	m_GearLock.unlock();
 
@@ -23495,7 +23499,7 @@ void DaPerson::ClaimTitleRecursive(const AuId& propertyId, const QString& proper
 	if(m_SeaChest.VoidOwnershipTitle(propertyId, ownerId, ownerName))
 	{
 		seachest = true;
-		m_tmSeaChestChange.Set();	
+		m_tmSeaChestChange.Set();
 	}
 	m_SeaChestLock.unlock();
 
@@ -25878,4 +25882,3 @@ void DaPerson::SetAccountActive()
 	if(!land.empty())
 		emit AvatarAccountActive(land);
 }
-

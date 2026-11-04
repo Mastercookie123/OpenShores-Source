@@ -237,3 +237,17 @@ client integration work still required. The renderer preview currently exports
 skin only and rejects different top/bottom palette offsets; clothing, held
 items, full world rendering and Qt composition remain migration work.
 `Launch-OpenShores.cmd` continues to launch the playable OpenGL client.
+
+## Automated client verification
+
+`Test-Client.cmd` runs the real client in an isolated single-player test world,
+drives movement/attack/equipment controls, captures screenshots and timing data,
+and exits with a pass/fail result. It requires no login or desktop interaction.
+Use `Test-Client.cmd -Build -Fixtures` to rebuild and include the visual suites.
+Results and crash logs are under `Artifacts/client-smoke`; `latest.json` points
+to the latest report. See `Source/tools/visual_test/CLIENT.md` for details.
+
+The new command interface is available with `Launch-Modern-UI.cmd` (or the
+existing `Launch-Filament-World.cmd`). `Launch-Classic-UI.cmd` selects the old
+interface in the same build. Press Ctrl+K to find panels, and use the rail's
+collapse button to reclaim space. Inventory now has a name filter.

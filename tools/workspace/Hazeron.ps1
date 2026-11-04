@@ -1,6 +1,7 @@
 param(
     [ValidateSet('Start','Stop','Status','Logs','BuildClient','Client','ClassicClient','LinuxClient','CharacterClient','ClassicCharacterClient','HumanClient','ClassicHumanClient','ProceduralClient','OriginalProceduralClient','VisualClient','OriginalVisualClient','ModularClient','OriginalModularClient','FilamentClient','FilamentWorldClient')]
-    [string]$Action = 'Status'
+    [string]$Action = 'Status',
+    [switch]$ClassicUI
 )
 $ErrorActionPreference = 'Stop'
 $repo = '/opt/hazeron/Source'
@@ -9,7 +10,9 @@ if ($Action -in @('FilamentClient','FilamentWorldClient')) {
     $world=$Action -eq 'FilamentWorldClient'
     $release=Get-Item (Join-Path $clientDir 'AuSceneClient-filament-world-r8-release.exe') -ErrorAction SilentlyContinue
     $debug=Get-Item (Join-Path $clientDir 'AuSceneClient-filament-world-r8-opt.exe') -ErrorAction SilentlyContinue
-    $worldExecutable=if($release -and (!$debug -or $release.LastWriteTimeUtc -ge $debug.LastWriteTimeUtc)){$release.Name}else{'AuSceneClient-filament-world-r8-opt.exe'}
+    $modern=Get-Item (Join-Path $clientDir 'AuSceneClient-modern-ui.exe') -ErrorAction SilentlyContinue
+    $worldBuilds=@($release,$debug,$modern)|Where-Object {$_}|Sort-Object LastWriteTimeUtc -Descending
+    $worldExecutable=if($worldBuilds){$worldBuilds[0].Name}else{'AuSceneClient-filament-world-r8-opt.exe'}
     $exe=Join-Path $clientDir $(if($world){$worldExecutable}else{'AuSceneClient-filament-r2.exe'})
     $dll=if($world){'OpenShoresFilamentWorld-r8.dll'}else{'OpenShoresFilament-r2.dll'}
     foreach($file in @($exe,(Join-Path $clientDir $dll),(Join-Path $clientDir 'filament-materials/body.filamat'),(Join-Path $clientDir 'filament-materials/depth.filamat'))){
@@ -23,7 +26,8 @@ if ($Action -in @('FilamentClient','FilamentWorldClient')) {
         $env:QT_FORCE_STDERR_LOGGING='1'
         $rendererFlag=if($world){'-renderer-filament-world'}else{'-renderer-filament'}
         $logPrefix=if($world){'filament-world-r8-game'}else{'filament-game'}
-        Start-Process -FilePath $exe -WorkingDirectory $clientDir -ArgumentList '-alocalhost','-graphics-enhanced',$rendererFlag,'-log' -WindowStyle Normal -RedirectStandardOutput (Join-Path $clientDir "$logPrefix-stdout.log") -RedirectStandardError (Join-Path $clientDir "$logPrefix-stderr.log")
+        $clientArguments=@('-alocalhost','-graphics-enhanced',$rendererFlag,'-log');if($ClassicUI){$clientArguments+='-ui-classic'}
+        Start-Process -FilePath $exe -WorkingDirectory $clientDir -ArgumentList $clientArguments -WindowStyle Normal -RedirectStandardOutput (Join-Path $clientDir "$logPrefix-stdout.log") -RedirectStandardError (Join-Path $clientDir "$logPrefix-stderr.log")
     }finally{[Environment]::SetEnvironmentVariable('OPENSHORES_BODY_PARTS',$previousPack,'Process');[Environment]::SetEnvironmentVariable('QT_FORCE_STDERR_LOGGING',$previousLog,'Process')}
     exit 0
 }

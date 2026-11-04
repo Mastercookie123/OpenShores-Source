@@ -78,3 +78,7 @@ front fill, and a dim night ambient. It requires at least four luminance levels
 of improvement at the fixed chest sample. The unlit-black control requires that
 same skin sample to remain black when both local and ambient lights are off.
 These are controlled character fixtures, not an exact replay of the live campfire.
+
+For unattended full-client startup, movement, equipment and framebuffer checks,
+see [CLIENT.md](CLIENT.md). The separate smoke client uses disposable local data
+and needs no account or manual login. Workspace runner: `Test-Client.cmd`.

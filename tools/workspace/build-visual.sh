@@ -7,7 +7,7 @@ files+=(src/lib/data/biology/dpbody.h src/lib/data/biology/dpbodyfilament.cpp sr
 files+=(src/lib/graphics/auglsl.h src/lib/graphics/aufilamentworld.h src/lib/graphics/aufilamentworld.cpp src/lib/designer/core/audesignerview.cpp src/renderer-filament/world_api.h)
 files+=(src/lib/atom/ui/audnaview.cpp src/lib/atom/ui/auitemview.cpp src/lib/atom/ui/aubodyrenderwidget.cpp src/lib/client/spacecraft/aucontrailsample.cpp src/lib/client/navigation/austarmapwidget.cpp)
 files+=(src/lib/atom/entities/celestial/dasolarsystem.cpp)
-files+=(src/lib/graphics/CMakeLists.txt)
+files+=(src/lib/graphics/CMakeLists.txt src/app/clients/scene/client_smoke.h src/app/clients/scene/modern_ui.h src/app/clients/scene/game_hud.h src/lib/global/ui/audocktitle.cpp src/lib/client/ui/aukeyfilter.cpp src/lib/client/inventory/augearwidget.cpp src/lib/client/inventory/auinventorygrid.h src/lib/atom/entities/actors/daperson.cpp src/lib/designer/core/audesignerview.h)
 for shader in "$workspace"/Source/src/lib/graphics/resources/shaders/Body*.f.glsl; do files+=("${shader#"$workspace/Source/"}"); done
 for file in "${files[@]}"; do
  mkdir -p "$(dirname "$repo/$file")"

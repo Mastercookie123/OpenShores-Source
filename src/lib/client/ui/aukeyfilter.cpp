@@ -9,6 +9,10 @@
 #include <auglobal.h>
 #include <QDebug>
 #include <QKeyEvent>
+#include <QApplication>
+#include <QLineEdit>
+#include <QTextEdit>
+#include <QPlainTextEdit>
 
 AuKeyFilter::AuKeyFilter(QObject* parent) : QObject(parent)
 {
@@ -17,7 +21,11 @@ AuKeyFilter::AuKeyFilter(QObject* parent) : QObject(parent)
 bool AuKeyFilter::eventFilter(QObject* obj, QEvent* event)
 {
 	bool handled = QObject::eventFilter(obj, event);
-	if(event->type() == QEvent::KeyPress)
+	if(event->type()==QEvent::KeyPress && qApp->property("modernUi").toBool()){
+        if(qobject_cast<QLineEdit*>(obj)||qobject_cast<QTextEdit*>(obj)||qobject_cast<QPlainTextEdit*>(obj))return handled;
+        for(auto* w=qobject_cast<QWidget*>(obj);w;w=w->parentWidget())if(w->objectName()=="CommandPalette")return handled;
+    }
+    if(event->type() == QEvent::KeyPress)
 	{
 		QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
 		if(!keyEvent->isAutoRepeat())

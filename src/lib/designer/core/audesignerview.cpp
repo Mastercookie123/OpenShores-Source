@@ -2820,7 +2820,7 @@ void AuDesignerView::wheelEvent(QWheelEvent *e)
 				double dist = 1.0;
 				if(bfast)
 					dist *= 10.0;
-	
+
 				MoveForward(dist);
 			}
 		}
@@ -2870,7 +2870,7 @@ void AuDesignerView::SetupProjection()
 	g_Au.SetFieldOfViewXCos(cos(fovx));
 }
 
-void AuDesignerView::OnViewResetCamera() 
+void AuDesignerView::OnViewResetCamera()
 {
 	SelectPreferredFirstThirdPersonView();
 	ResetCamera();
@@ -4470,7 +4470,7 @@ void AuDesignerView::SelectPreferredFirstThirdPersonView()
 		m_RenderInfo->SetViewMode(AuAtomRenderInfo::VM_ThirdPerson);
 }
 
-void AuDesignerView::ToggleFirstThirdPersonView() 
+void AuDesignerView::ToggleFirstThirdPersonView()
 {
 	m_View1stPref = !m_View1stPref;
 	g_Au.Settings().writeEntry("Camera/1stPersonViewPref", m_View1stPref);
@@ -4479,7 +4479,7 @@ void AuDesignerView::ToggleFirstThirdPersonView()
 	StopCamera();
 }
 
-void AuDesignerView::ToggleTopDownView() 
+void AuDesignerView::ToggleTopDownView()
 {
 	if(m_RenderInfo->IsViewTopDown())
 	{
@@ -4866,7 +4866,7 @@ void AuDesignerView::EndCommand(int runLevel)
 		CommandPromptChanged("");		// Clear prompt.
 }
 
-void AuDesignerView::OnViewFreeflyingcamera() 
+void AuDesignerView::OnViewFreeflyingcamera()
 {
 	m_bFreeCamera = !m_bFreeCamera;
 	ResetCamera();
@@ -4902,18 +4902,18 @@ DaWorldLL* AuDesignerView::FindTerrainLocationAtPixel(DaPerson* sceneAtom, const
 	/*
 	if(pa)
 	{
-		qDebug("%s (%s) location (%g,%g,%g) at pixel.\n", 
-			pa->Name(), 
-			pa->Id().StringId(), 
-			fLoc.x, 
-			fLoc.y, 
+		qDebug("%s (%s) location (%g,%g,%g) at pixel.\n",
+			pa->Name(),
+			pa->Id().StringId(),
+			fLoc.x,
+			fLoc.y,
 			fLoc.z);
-		qDebug("%s location (%g,%g,%g in %s).\n", 
-			sceneAtom->Name(), 
-			sceneAtom->Location().x, 
-			sceneAtom->Location().y, 
+		qDebug("%s location (%g,%g,%g in %s).\n",
+			sceneAtom->Name(),
+			sceneAtom->Location().x,
+			sceneAtom->Location().y,
 			sceneAtom->Location().z,
-			sceneAtom->ParentId().StringId() 
+			sceneAtom->ParentId().StringId()
 			);
 	}
 	*/
@@ -4965,7 +4965,7 @@ void AuDesignerView::PlanManufacturingWorkerOk(bool enableWorker)
 	}
 }
 
-void AuDesignerView::PlanClearDevelopments() 
+void AuDesignerView::PlanClearDevelopments()
 {
 	if(IsInDesignEnvironment())
 		return;
@@ -4973,7 +4973,7 @@ void AuDesignerView::PlanClearDevelopments()
 	StartCommand(new DdPlanClearGlobe(this));
 }
 
-void AuDesignerView::PlanClearCraters() 
+void AuDesignerView::PlanClearCraters()
 {
 	if(IsInDesignEnvironment())
 		return;
@@ -5263,6 +5263,8 @@ void AuDesignerView::UpdateSceneInfo(DaPerson* sceneAtom)
 // Called by AuModel (another thread) to process atom and UI controls.
 void AuDesignerView::ProcessControls()
 {
+    // The opt-in integration driver owns controls; desktop activity must not alter its scenario.
+    if(qEnvironmentVariableIsSet("OPENSHORES_CLIENT_SMOKE"))return;
 	//qDebug() << "AuDesignerView::ProcessControls" << AuTime::Now();
 	if(!m_SceneRendered)
 	{
@@ -5573,7 +5575,7 @@ bool AuDesignerView::ProcessAtomWheelEvent(QWheelEvent* e)
 {
 	if(!IsCharacterInputMode())
 		return false;	// Input is not going to an atom.
-	
+
 	if(!m_pControlsAtom)
 		return false;	// No atom or controls to receive the input.
 
@@ -5678,7 +5680,7 @@ bool AuDesignerView::ProcessUIMouseRelease(QMouseEvent* e)
 					AuPoint globeLoc;
 					sceneAtom->GetLocationRelativeToParent(globeLoc, llworld);
 					AuForageHistory forageAttempt = AuForageHistory((COMMODITYID)idPanel, pa->Id(), globeLoc);
-					
+
 					// Check for any recent forage activity that prevents this attempt.
 					// To manage the list, we will throw away and ignore items that have grown too old.
 					QList<AuForageHistory>::iterator fi = m_ForageHistory.begin();
@@ -5878,7 +5880,7 @@ bool AuDesignerView::ProcessUIMouseRelease(QMouseEvent* e)
 				{
 					DiControlInputArray sampleMouse;
 					pa->SampleControlPanelInput(idPanel, fPanelLoc, sampleMouse, false);
-					
+
 					// Get selection and activation values from the ui.
 					AuDesignerFrame* pFrame = auDesignerApp->DesignerFrame();
 					Q_ASSERT(pFrame);
@@ -7699,7 +7701,7 @@ void AuDesignerView::RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment)
 			AuBox fb;
 			unit->RoughExtents(fb);
 			fb.Transform(tsub);
-			
+
 			const DaVehicle* vehicle = dynamic_cast<const DaVehicle*>(unit);
 			if(vehicle && vehicle->CommodityId() == CID_SpaceRocket)
 			{
@@ -8569,7 +8571,7 @@ void AuDesignerView::ProcessControlInput(const DiControlInputArray& aActiveContr
 		case CI_InputModeHandTemporary:
 			m_HandInputTemporary = true;
 			break;
-	
+
 		case CI_InputModeToggle:
 			m_bFreeMouse = !m_bFreeMouse;	// Free mouse from scene animator.
 			if(m_bFreeMouse)
@@ -8629,7 +8631,7 @@ void AuDesignerView::ProcessControlInput(const DiControlInputArray& aActiveContr
 		case CI_SquadCreate9:
 			SquadCreate(9);
 			break;
-		
+
 		// Squad selection.
 		case CI_SquadSelect0:
 			SquadSelect(0, true);
@@ -9360,6 +9362,7 @@ double AuDesignerView::ViewButtonSubRadius() const
 
 void AuDesignerView::RenderViewButtons()
 {
+    if(qApp->property("modernNavigationReady").toBool() && SceneContext()!=SCENE_Designer){m_ViewButtons.clear();m_ViewButtonAt=m_ViewButtonNear=m_ViewButtonPressed=AuViewButton::VB_Invalid;return;}
 	if(!m_RenderInfo->m_ShowHUD)
 	{
 		m_ViewButtonAt = AuViewButton::VB_Invalid;
@@ -10060,6 +10063,7 @@ void AuDesignerView::RenderViewButtons()
 
 void AuDesignerView::RenderWindowSize()
 {
+    if(qApp->property("modernUi").toBool()&&!AuRenderCounters::s_On)return;
 	if(!g_AuClient.ShowWindowSize())
 		return;
 	if(m_SizeFoVY != g_Au.FieldOfViewY())
@@ -10628,7 +10632,7 @@ void AuDesignerView::ProcessDesignerMousePress(QMouseEvent* e)
 				if(m_AnchorLoc != QPoint(-1,-1))
 				{
 					// Determine selection rectangle coordinates from the pointer press location to the pointer anchor location.
-					// This forms a pixel rectangle for selection, like dragging the cursor.  
+					// This forms a pixel rectangle for selection, like dragging the cursor.
 					/*
 					QPoint topLeft;
 					if(m_AnchorLoc.x() < m_MousePress.x())
@@ -10691,7 +10695,7 @@ void AuDesignerView::ProcessDesignerMousePress(QMouseEvent* e)
 				if(m_AnchorLoc != QPoint(-1,-1))
 				{
 					// Determine selection rectangle coordinates from the pointer press location to the pointer anchor location.
-					// This forms a pixel rectangle for selection, like dragging the cursor.  
+					// This forms a pixel rectangle for selection, like dragging the cursor.
 					/*
 					QPoint topLeft;
 					if(m_AnchorLoc.x() < m_MousePress.x())
@@ -11076,7 +11080,7 @@ void AuDesignerView::ProcessDesignerMouseRelease(QMouseEvent* e)
 							// Parts are not being dragged. Select the parts in the drag selection rectangle.
 							// Determine selection rectangle coordinates from the pointer press location to the pointer anchor
 							// location.
-							// This forms a pixel rectangle for selection, like dragging the cursor.  
+							// This forms a pixel rectangle for selection, like dragging the cursor.
 							/*
 							QPoint topLeft;
 							if(m_AnchorLoc.x() < e->pos().x())
@@ -11187,7 +11191,7 @@ void AuDesignerView::ProcessDesignerMouseRelease(QMouseEvent* e)
 							// Parts are not being dragged. Select the parts in the drag selection rectangle.
 							// Determine selection rectangle coordinates from the pointer press location to the pointer anchor
 							// location.
-							// This forms a pixel rectangle for selection, like dragging the cursor.  
+							// This forms a pixel rectangle for selection, like dragging the cursor.
 							/*
 							QPoint topLeft;
 							if(m_AnchorLoc.x() < e->pos().x())
@@ -14607,7 +14611,7 @@ void AuDesignerView::DesignerFinalize()
 					Qt::SmoothTransformation);
 			//thumb.save("thumb.png");
 
-			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of 
+			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of
 			// changes while the dialog is up.
 			AuScFinalizeDlg* dlg = 0;
 			DaPerson* sceneAtom;
@@ -14658,7 +14662,7 @@ void AuDesignerView::DesignerFinalize()
 					Qt::SmoothTransformation);
 			//thumb.save("thumb.png");
 
-			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of 
+			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of
 			// changes while the dialog is up.
 			AuBdFinalizeDlg* dlg = 0;
 			DaPerson* sceneAtom;
@@ -14709,7 +14713,7 @@ void AuDesignerView::DesignerFinalize()
 					Qt::SmoothTransformation);
 			//thumb.save("thumb.png");
 
-			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of 
+			// The dialog grabs a clone of the current design in its constructor. That is the one that is finalized, in case of
 			// changes while the dialog is up.
 			AuItFinalizeDlg* dlg = 0;
 			DaPerson* sceneAtom;
@@ -15412,7 +15416,7 @@ void AuDesignerView::PositionControlButtons()
 				AuPoint globeLoc;
 				sceneAtom->GetLocationRelativeToParent(globeLoc, llworld);
 				AuForageHistory forageAttempt = AuForageHistory((COMMODITYID)idPanel, atom->Id(), globeLoc);
-				
+
 				// Check for any recent forage activity that prevents this attempt.
 				// To manage the list, we will throw away and ignore items that have grown too old.
 				QList<AuForageHistory>::iterator fi = m_ForageHistory.begin();
@@ -15570,7 +15574,7 @@ void AuDesignerView::ControlButtonClicked(const AuControlButton& button)
 					AuPoint globeLoc;
 					sceneAtom->GetLocationRelativeToParent(globeLoc, llworld);
 					AuForageHistory forageAttempt = AuForageHistory((COMMODITYID)button.m_AtomPanel, atom->Id(), globeLoc);
-					
+
 					// Check for any recent forage activity that prevents this attempt.
 					// To manage the list, we will throw away and ignore items that have grown too old.
 					QList<AuForageHistory>::iterator fi = m_ForageHistory.begin();
@@ -16179,4 +16183,3 @@ bool AuDesignerView::FindClosestFencePost(AuPoint& postLoc, AuId& platformId)
 	UnlockSceneAtom();
 	return foundPost;
 }
-
